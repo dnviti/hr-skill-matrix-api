@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # Servizio per il database MariaDB (usato per produzione/staging)
+  db:
+    image: docker.io/library/mariadb:10.6
+    container_name: skill-matrix-db
+    profiles:
+      - prod
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql:Z
+    networks:
+      - app-network
+    # ** MODIFICA CHIAVE **
+    # Aggiungi un healthcheck per verificare che MariaDB sia pronto
+    healthcheck:
+      # Comando per verificare se il server MySQL risponde.
+      # Utilizza mysqladmin, uno strumento standard di MariaDB/MySQL.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s       # Intervallo tra i controlli
+      timeout: 5s         # Tempo massimo di attesa per una risposta
+      retries: 5          # Numero di tentativi falliti prima di marcare il container come "unhealthy"
+      start_period: 30s   # Periodo di grazia all'avvio del container per permettere l'inizializzazione
+
+  # Servizio 'app' per l'ambiente di PRODUZIONE
+  app-prod:
+    container_name: skill-matrix-app-prod
+    build: .
+    profiles:
+      - prod
+    restart: unless-stopped
+    env_file: .env.prod
+    ports:
+      - "8000:8000"
+    # ** MODIFICA CHIAVE **
+    # Ora `depends_on` attenderà che l'healthcheck di 'db' passi
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - .:/home/app:Z
+
+  # Servizio 'app' per l'ambiente di SVILUPPO (invariato)
+  app-dev:
+    container_name: skill-matrix-app-dev
+    profiles:
+      - dev
+    build: .
+    restart: unless-stopped
+    env_file: .env.dev
+    ports:
+      - "8000:8000"
+    networks:
+      - app-network
+    volumes:
+      - .:/home/app:Z
+      - sqlite_data:/home/app/data:Z
+
+# Definizioni volumi e reti (invariate)
+volumes:
+  mariadb_data:
+    driver: local
+  sqlite_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

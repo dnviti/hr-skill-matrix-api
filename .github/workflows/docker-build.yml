@@ -1,0 +1,51 @@
+# Nome del workflow che apparirà nella sezione "Actions" di GitHub
+name: Build and Push Docker Image
+
+# Specifica quando eseguire il workflow
+on:
+  push:
+    branches:
+      - main # Esegui solo quando viene fatto un push sul branch 'main'
+
+# Definisce i job da eseguire
+jobs:
+  build-and-push:
+    # Nome del job
+    name: Build and Push to GHCR
+    # Specifica il tipo di runner su cui eseguire il job
+    runs-on: ubuntu-latest
+
+    # Definisce i permessi necessari per il token del job
+    permissions:
+      contents: read
+      packages: write # Permesso per scrivere su GitHub Packages (Container Registry)
+
+    # Elenco dei passaggi (step) che compongono il job
+    steps:
+      - name: Checkout repository
+        # Azione per scaricare il codice del repository nel runner
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        # Azione per effettuare il login a GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          # 'github.actor' è il nome dell'utente che ha avviato il workflow
+          username: ${{ github.actor }}
+          # 'GITHUB_TOKEN' è un segreto generato automaticamente per l'autenticazione
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        # Azione per configurare Buildx, un builder avanzato di Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        # Azione principale che compila il Dockerfile e carica l'immagine
+        uses: docker/build-push-action@v5
+        with:
+          context: . # Il contesto di build (la root del repository)
+          file: ./Dockerfile # Il percorso del tuo Dockerfile
+          push: true # Imposta a 'true' per caricare l'immagine dopo la build
+          # Definisce i tag per l'immagine Docker
+          tags: ghcr.io/${{ github.repository_owner }}/hr-skill-matrix-api:latest

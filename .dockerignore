@@ -1,0 +1,22 @@
+# Ambienti virtuali
+.venv
+venv/
+env/
+
+# Cache di Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# File di configurazione IDE
+.vscode/
+.idea/
+
+# File Git
+.git
+.gitignore
+
+# File di sistema
+*.DS_Store
+Thumbs.db

@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VarGroup - Skill Matrix</title>
+    
+    <!-- Tailwind CSS per lo stile -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icone Lucide per una migliore UI -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js per le statistiche -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Font Inter per un look moderno -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* gray-50 */
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 20px; height: 20px;
+            background: #3b82f6; /* blue-500 */
+            cursor: pointer; border-radius: 50%;
+            margin-top: -6px;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px; height: 20px;
+            background: #3b82f6; /* blue-500 */
+            cursor: pointer; border-radius: 50%;
+        }
+        .view-section {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .tab-button.active {
+            border-color: #3b82f6;
+            color: #2563eb;
+        }
+        .tab-button:not(.active) {
+            border-color: transparent;
+            color: #6b7280;
+        }
+        .tab-button:not(.active):hover {
+            border-color: #d1d5db;
+            color: #374151;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+
+        <!-- Intestazione -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-blue-600">Var<span class="text-gray-700">Group</span></h1>
+            <p class="text-xl text-gray-500 mt-2">Skill Matrix Management</p>
+        </header>
+
+        <!-- Navigazione a Tab -->
+        <div class="mb-8 border-b border-gray-200">
+            <nav class="flex flex-wrap -mb-px space-x-4" aria-label="Tabs">
+                <button onclick="switchView('risorse')" id="tab-risorse" class="tab-button group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
+                    <i data-lucide="users" class="mr-2"></i> Gestione Risorse
+                </button>
+                <button onclick="switchView('skills')" id="tab-skills" class="tab-button group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
+                    <i data-lucide="wrench" class="mr-2"></i> Gestione Skills
+                </button>
+                <button onclick="switchView('bu')" id="tab-bu" class="tab-button group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
+                    <i data-lucide="briefcase" class="mr-2"></i> Gestione BU
+                </button>
+                <button onclick="switchView('assegna')" id="tab-assegna" class="tab-button group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
+                    <i data-lucide="sliders-horizontal" class="mr-2"></i> Assegna Competenze
+                </button>
+                <button onclick="switchView('ricerca')" id="tab-ricerca" class="tab-button group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
+                    <i data-lucide="search" class="mr-2"></i> Ricerca
+                </button>
+                <button onclick="switchView('statistiche')" id="tab-statistiche" class="tab-button group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
+                    <i data-lucide="bar-chart-3" class="mr-2"></i> Statistiche
+                </button>
+            </nav>
+        </div>
+
+        <!-- Contenuto dinamico delle sezioni -->
+        <main>
+            <section id="view-risorse" class="view-section"></section>
+            <section id="view-skills" class="view-section hidden"></section>
+            <section id="view-bu" class="view-section hidden"></section>
+            <section id="view-assegna" class="view-section hidden"></section>
+
+            <section id="view-ricerca" class="view-section hidden">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-semibold mb-6 flex items-center"><i data-lucide="search-check" class="mr-2 text-cyan-500"></i> Cerca Risorse per Competenze</h2>
+                    <div class="grid md:grid-cols-3 gap-4 mb-6 p-4 border rounded-lg bg-gray-50">
+                        <div>
+                            <label for="search-skill-select" class="block text-sm font-medium text-gray-700">Competenza</label>
+                            <select id="search-skill-select" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-cyan-500 focus:border-transparent"></select>
+                        </div>
+                        <div>
+                            <label for="search-level-slider" class="block text-sm font-medium text-gray-700">Livello Minimo: <span id="search-level-label" class="font-bold text-cyan-600">0</span></label>
+                            <input type="range" id="search-level-slider" min="0" max="10" value="0" class="mt-1 block w-full">
+                        </div>
+                        <div>
+                            <label for="search-bu-select" class="block text-sm font-medium text-gray-700">Business Unit</label>
+                            <select id="search-bu-select" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
+                                <option value="">Tutte</option>
+                                <!-- Opzioni caricate dinamicamente -->
+                            </select>
+                        </div>
+                    </div>
+                    <div id="search-results-container"></div>
+                </div>
+            </section>
+
+            <section id="view-statistiche" class="view-section hidden">
+                <div class="grid md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-medium text-gray-500">Risorse Totali</h3>
+                        <p id="stats-total-resources" class="text-5xl font-bold text-blue-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-medium text-gray-500">Skill Registrate</h3>
+                        <p id="stats-total-skills" class="text-5xl font-bold text-green-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-medium text-gray-500">Competenza Media</h3>
+                        <p id="stats-avg-level" class="text-5xl font-bold text-purple-600 mt-2">0.0</p>
+                    </div>
+                </div>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-semibold mb-4 text-center">Top 5 Competenze più diffuse</h3>
+                        <canvas id="top-skills-chart"></canvas>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-semibold mb-4 text-center">Risorse per Business Unit</h3>
+                        <canvas id="bu-distribution-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <div id="notification-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-11/12 md:w-1/3 text-center transform transition-all scale-95 opacity-0" id="notification-content">
+            <div id="notification-icon" class="mx-auto mb-4 w-12 h-12 rounded-full flex items-center justify-center"></div>
+            <p id="notification-message" class="text-lg"></p>
+        </div>
+    </div>
+
+    <script>
+    // --- MOCK API & DATA STORE ---
+    const dataStore = {
+        resources: [],
+        skills: [],
+        businessUnits: []
+    };
+
+    const api = {
+        getResources: () => Promise.resolve(dataStore.resources),
+        getSkills: () => Promise.resolve(dataStore.skills),
+        getBusinessUnits: () => Promise.resolve(dataStore.businessUnits),
+        addBusinessUnit: (buData) => {
+            if (dataStore.businessUnits.some(bu => bu.name.toLowerCase() === buData.name.toLowerCase())) {
+                return Promise.reject('Business Unit già esistente.');
+            }
+            const newBu = { ...buData, id: `bu${Date.now()}` };
+            dataStore.businessUnits.push(newBu);
+            return Promise.resolve(newBu);
+        },
+        addResource: (resourceData) => {
+            const newResource = { ...resourceData, id: `res${Date.now()}`, skills: [] };
+            dataStore.resources.push(newResource);
+            return Promise.resolve(newResource);
+        },
+        addSkill: (skillData) => {
+            if (dataStore.skills.some(s => s.name.toLowerCase() === skillData.name.toLowerCase())) {
+                return Promise.reject('Skill già esistente.');
+            }
+            const newSkill = { ...skillData, id: `skill${Date.now()}` };
+            dataStore.skills.push(newSkill);
+            return Promise.resolve(newSkill);
+        },
+        updateResourceSkills: (resourceId, skills) => {
+            const resource = dataStore.resources.find(r => r.id === resourceId);
+            if (resource) {
+                resource.skills = skills;
+                return Promise.resolve(resource);
+            }
+            return Promise.reject('Risorsa non trovata');
+        }
+    };
+
+    // --- GESTIONE VISTE (TABS) ---
+    const views = document.querySelectorAll('.view-section');
+    const tabs = document.querySelectorAll('.tab-button');
+    let charts = {};
+
+    function switchView(viewId) {
+        views.forEach(view => view.classList.add('hidden'));
+        tabs.forEach(tab => tab.classList.remove('active'));
+
+        document.getElementById(`view-${viewId}`).classList.remove('hidden');
+        document.getElementById(`tab-${viewId}`).classList.add('active');
+
+        switch (viewId) {
+            case 'risorse': renderRisorseView(); break;
+            case 'skills': renderSkillsView(); break;
+            case 'bu': renderBuView(); break;
+            case 'assegna': renderAssegnaView(); break;
+            case 'ricerca': renderRicercaView(); break;
+            case 'statistiche': renderStatisticheView(); break;
+        }
+    }
+
+    // --- FUNZIONI DI RENDERING PER VISTA ---
+    function renderRisorseView() {
+        const container = document.getElementById('view-risorse');
+        container.innerHTML = `
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="md:col-span-1">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-semibold mb-4 flex items-center"><i data-lucide="user-plus" class="mr-2 text-blue-500"></i> Aggiungi Risorsa</h2>
+                        <form id="form-add-resource" class="space-y-4">
+                            <input type="text" id="resource-nome" placeholder="Nome" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" required>
+                            <input type="text" id="resource-cognome" placeholder="Cognome" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" required>
+                            <select id="resource-bu" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" required>
+                                <option value="">Seleziona Business Unit</option>
+                            </select>
+                            <input type="email" id="resource-email" placeholder="Email" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" required>
+                            <input type="tel" id="resource-numero" placeholder="Numero di telefono" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                            <button type="submit" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition duration-300 flex items-center justify-center">
+                                <i data-lucide="save" class="mr-2"></i> Salva Risorsa
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-semibold mb-4 flex items-center"><i data-lucide="list" class="mr-2 text-blue-500"></i> Elenco Risorse</h2>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white">
+                                <thead class="bg-gray-100"><tr><th class="py-2 px-4 text-left">Nome</th><th class="py-2 px-4 text-left">Business Unit</th><th class="py-2 px-4 text-left">Email</th></tr></thead>
+                                <tbody id="resources-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        
+        document.getElementById('form-add-resource').addEventListener('submit', handleAddResource);
+        renderResourcesList();
+        updateBuSelectors();
+        lucide.createIcons();
+    }
+    
+    function renderSkillsView() {
+        const container = document.getElementById('view-skills');
+        container.innerHTML = `
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="md:col-span-1">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-semibold mb-4 flex items-center"><i data-lucide="plus-circle" class="mr-2 text-green-500"></i> Aggiungi Skill</h2>
+                        <form id="form-add-skill" class="space-y-4">
+                            <input type="text" id="skill-name" placeholder="Nome della skill (es. React.js)" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500" required>
+                            <button type="submit" class="w-full bg-green-500 text-white font-bold py-2 px-4 rounded-md hover:bg-green-600 transition duration-300 flex items-center justify-center">
+                                <i data-lucide="save" class="mr-2"></i> Aggiungi Skill
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                     <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-semibold mb-4 flex items-center"><i data-lucide="list-checks" class="mr-2 text-green-500"></i> Elenco Skills</h2>
+                        <ul id="skills-list" class="space-y-2"></ul>
+                    </div>
+                </div>
+            </div>`;
+        
+        document.getElementById('form-add-skill').addEventListener('submit', handleAddSkill);
+        renderSkillsList();
+        lucide.createIcons();
+    }
+
+    function renderBuView() {
+        const container = document.getElementById('view-bu');
+        container.innerHTML = `
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="md:col-span-1">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-semibold mb-4 flex items-center"><i data-lucide="plus-circle" class="mr-2 text-orange-500"></i> Aggiungi Business Unit</h2>
+                        <form id="form-add-bu" class="space-y-4">
+                            <input type="text" id="bu-name" placeholder="Nome della Business Unit" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500" required>
+                            <button type="submit" class="w-full bg-orange-500 text-white font-bold py-2 px-4 rounded-md hover:bg-orange-600 transition duration-300 flex items-center justify-center">
+                                <i data-lucide="save" class="mr-2"></i> Aggiungi BU
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                     <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-semibold mb-4 flex items-center"><i data-lucide="list-checks" class="mr-2 text-orange-500"></i> Elenco Business Units</h2>
+                        <ul id="bu-list" class="space-y-2"></ul>
+                    </div>
+                </div>
+            </div>`;
+        
+        document.getElementById('form-add-bu').addEventListener('submit', handleAddBusinessUnit);
+        renderBuList();
+        lucide.createIcons();
+    }
+
+    function renderAssegnaView() {
+        const container = document.getElementById('view-assegna');
+        container.innerHTML = `
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold mb-4 flex items-center"><i data-lucide="user-check" class="mr-2 text-purple-500"></i> Assegna Competenze</h2>
+                <div class="mb-6">
+                    <label for="select-resource-for-assignment" class="block text-sm font-medium text-gray-700 mb-1">Seleziona una risorsa:</label>
+                    <select id="select-resource-for-assignment" class="w-full md:w-1/2 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"></select>
+                </div>
+                <div id="assignment-container" class="hidden">
+                    <h3 class="text-xl font-semibold mb-4">Competenze per <span id="assignment-resource-name" class="text-purple-600"></span></h3>
+                    <div id="assignment-skills-list" class="space-y-6"></div>
+                    <button id="save-assignments-btn" class="mt-8 bg-purple-500 text-white font-bold py-2 px-6 rounded-md hover:bg-purple-600 flex items-center">
+                        <i data-lucide="save" class="mr-2"></i> Salva Assegnazioni
+                    </button>
+                </div>
+                 <div id="assignment-placeholder" class="text-center py-12 text-gray-500">
+                    <i data-lucide="mouse-pointer-square" class="mx-auto h-12 w-12"></i>
+                    <p class="mt-2">Seleziona una risorsa per iniziare.</p>
+                </div>
+            </div>`;
+        
+        document.getElementById('select-resource-for-assignment').addEventListener('change', handleResourceSelectionForAssignment);
+        document.getElementById('save-assignments-btn').addEventListener('click', handleSaveAssignments);
+        updateResourceSelector();
+        lucide.createIcons();
+    }
+
+    function renderRicercaView() {
+        const searchLevelSlider = document.getElementById('search-level-slider');
+        const searchLevelLabel = document.getElementById('search-level-label');
+        searchLevelSlider.addEventListener('input', () => {
+            searchLevelLabel.textContent = searchLevelSlider.value;
+            handleSearch();
+        });
+        document.getElementById('search-skill-select').addEventListener('change', handleSearch);
+        document.getElementById('search-bu-select').addEventListener('change', handleSearch);
+        
+        updateSearchSkillSelector();
+        updateBuSelectors();
+        handleSearch();
+    }
+
+    function renderStatisticheView() {
+        const { resources, skills } = dataStore;
+        document.getElementById('stats-total-resources').textContent = resources.length;
+        document.getElementById('stats-total-skills').textContent = skills.length;
+        const allLevels = resources.flatMap(r => r.skills.map(s => s.level));
+        const avgLevel = allLevels.length ? (allLevels.reduce((a, b) => a + b, 0) / allLevels.length).toFixed(1) : '0.0';
+        document.getElementById('stats-avg-level').textContent = avgLevel;
+
+        if (charts.topSkills) charts.topSkills.destroy();
+        if (charts.buDistribution) charts.buDistribution.destroy();
+
+        const skillCounts = {};
+        resources.forEach(r => r.skills.forEach(s => { skillCounts[s.skillId] = (skillCounts[s.skillId] || 0) + 1; }));
+        const sortedSkills = Object.entries(skillCounts).sort(([,a],[,b]) => b - a).slice(0, 5);
+        const skillNames = sortedSkills.map(([skillId]) => skills.find(s => s.id === skillId)?.name || 'N/D');
+        const skillValues = sortedSkills.map(([,count]) => count);
+
+        charts.topSkills = new Chart(document.getElementById('top-skills-chart'), {
+            type: 'bar',
+            data: { labels: skillNames, datasets: [{ label: 'Numero di Risorse', data: skillValues, backgroundColor: 'rgba(54, 162, 235, 0.6)', borderColor: 'rgba(54, 162, 235, 1)', borderWidth: 1 }] },
+            options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } }
+        });
+
+        const buCounts = resources.reduce((acc, r) => { acc[r.bu] = (acc[r.bu] || 0) + 1; return acc; }, {});
+        charts.buDistribution = new Chart(document.getElementById('bu-distribution-chart'), {
+            type: 'doughnut',
+            data: { labels: Object.keys(buCounts), datasets: [{ data: Object.values(buCounts), backgroundColor: ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#f59e0b', '#6366f1'], }] },
+            options: { responsive: true, plugins: { legend: { position: 'top' } } }
+        });
+    }
+
+    // --- LOGICA DI GESTIONE ---
+
+    async function renderResourcesList() {
+        const resources = await api.getResources();
+        const tableBody = document.getElementById('resources-table-body');
+        tableBody.innerHTML = '';
+        if (resources.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-gray-500">Nessuna risorsa aggiunta.</td></tr>`;
+            return;
+        }
+        resources.forEach(res => {
+            const row = document.createElement('tr');
+            row.className = 'border-b';
+            row.innerHTML = `<td class="py-3 px-4">${res.nome} ${res.cognome}</td><td class="py-3 px-4">${res.bu}</td><td class="py-3 px-4">${res.email}</td>`;
+            tableBody.appendChild(row);
+        });
+    }
+
+    async function handleAddResource(e) {
+        e.preventDefault();
+        const formData = {
+            nome: document.getElementById('resource-nome').value,
+            cognome: document.getElementById('resource-cognome').value,
+            bu: document.getElementById('resource-bu').value,
+            email: document.getElementById('resource-email').value,
+            numero: document.getElementById('resource-numero').value,
+        };
+        if (!formData.bu) {
+            showNotification('Per favore, seleziona una Business Unit.', 'warning');
+            return;
+        }
+        await api.addResource(formData);
+        renderResourcesList();
+        updateResourceSelector();
+        e.target.reset();
+        showNotification('Risorsa aggiunta con successo!', 'success');
+    }
+    
+    async function renderSkillsList() {
+        const skills = await api.getSkills();
+        const list = document.getElementById('skills-list');
+        list.innerHTML = '';
+        if (skills.length === 0) {
+            list.innerHTML = `<li class="text-center py-4 text-gray-500">Nessuna skill aggiunta.</li>`;
+            return;
+        }
+        skills.forEach(skill => {
+            const item = document.createElement('li');
+            item.className = 'flex justify-between items-center bg-gray-50 p-3 rounded-md';
+            item.innerHTML = `<span class="font-medium">${skill.name}</span><span class="text-xs text-gray-400">ID: ${skill.id}</span>`;
+            list.appendChild(item);
+        });
+    }
+
+    async function handleAddSkill(e) {
+        e.preventDefault();
+        const skillName = document.getElementById('skill-name').value;
+        try {
+            await api.addSkill({ name: skillName });
+            renderSkillsList();
+            e.target.reset();
+            showNotification('Skill aggiunta con successo!', 'success');
+        } catch (error) {
+            showNotification(error, 'error');
+        }
+    }
+
+    async function renderBuList() {
+        const businessUnits = await api.getBusinessUnits();
+        const list = document.getElementById('bu-list');
+        list.innerHTML = '';
+        if (businessUnits.length === 0) {
+            list.innerHTML = `<li class="text-center py-4 text-gray-500">Nessuna Business Unit aggiunta.</li>`;
+            return;
+        }
+        businessUnits.forEach(bu => {
+            const item = document.createElement('li');
+            item.className = 'flex justify-between items-center bg-gray-50 p-3 rounded-md';
+            item.innerHTML = `<span class="font-medium">${bu.name}</span><span class="text-xs text-gray-400">ID: ${bu.id}</span>`;
+            list.appendChild(item);
+        });
+    }
+
+    async function handleAddBusinessUnit(e) {
+        e.preventDefault();
+        const buName = document.getElementById('bu-name').value;
+        try {
+            await api.addBusinessUnit({ name: buName });
+            renderBuList();
+            updateBuSelectors();
+            e.target.reset();
+            showNotification('Business Unit aggiunta con successo!', 'success');
+        } catch (error) {
+            showNotification(error, 'error');
+        }
+    }
+
+    async function updateResourceSelector() {
+        const selector = document.getElementById('select-resource-for-assignment');
+        if (!selector) return;
+        const resources = await api.getResources();
+        const selectedValue = selector.value;
+        selector.innerHTML = '<option value="">-- Seleziona una risorsa --</option>';
+        resources.forEach(res => {
+            const option = document.createElement('option');
+            option.value = res.id;
+            option.textContent = `${res.nome} ${res.cognome} (${res.bu})`;
+            selector.appendChild(option);
+        });
+        selector.value = selectedValue;
+    }
+    
+    function handleResourceSelectionForAssignment(e) {
+        const resourceId = e.target.value;
+        const container = document.getElementById('assignment-container');
+        const placeholder = document.getElementById('assignment-placeholder');
+        if (resourceId) {
+            renderAssignmentsForResource(resourceId);
+            container.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        } else {
+            container.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+        }
+    }
+
+    async function renderAssignmentsForResource(resourceId) {
+        const resource = (await api.getResources()).find(r => r.id === resourceId);
+        const allSkills = await api.getSkills();
+        if (!resource) return;
+
+        document.getElementById('assignment-resource-name').textContent = `${resource.nome} ${resource.cognome}`;
+        const listContainer = document.getElementById('assignment-skills-list');
+        listContainer.innerHTML = '';
+
+        allSkills.forEach(skill => {
+            const assignedSkill = resource.skills.find(s => s.skillId === skill.id);
+            const currentLevel = assignedSkill ? assignedSkill.level : 0;
+            const skillDiv = document.createElement('div');
+            skillDiv.className = 'grid grid-cols-1 md:grid-cols-3 items-center gap-4';
+            skillDiv.innerHTML = `
+                <label for="slider-${skill.id}" class="font-medium col-span-1">${skill.name}</label>
+                <div class="col-span-2 flex items-center gap-4">
+                    <input type="range" id="slider-${skill.id}" data-skill-id="${skill.id}" min="0" max="10" value="${currentLevel}" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <span class="font-bold text-purple-600 w-8 text-center" id="level-label-${skill.id}">${currentLevel}</span>
+                </div>`;
+            listContainer.appendChild(skillDiv);
+        });
+        
+        listContainer.querySelectorAll('input[type="range"]').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                document.getElementById(`level-label-${e.target.dataset.skillId}`).textContent = e.target.value;
+            });
+        });
+    }
+
+    async function handleSaveAssignments() {
+        const resourceId = document.getElementById('select-resource-for-assignment').value;
+        if (!resourceId) {
+            showNotification('Seleziona una risorsa prima di salvare.', 'warning');
+            return;
+        }
+        const newAssignments = [];
+        document.getElementById('assignment-skills-list').querySelectorAll('input[type="range"]').forEach(slider => {
+            const level = parseInt(slider.value, 10);
+            if (level > 0) { newAssignments.push({ skillId: slider.dataset.skillId, level }); }
+        });
+        const resource = await api.updateResourceSkills(resourceId, newAssignments);
+        showNotification(`Competenze per ${resource.nome} aggiornate!`, 'success');
+    }
+
+    async function updateSearchSkillSelector() {
+        const selector = document.getElementById('search-skill-select');
+        const skills = await api.getSkills();
+        selector.innerHTML = '<option value="">Tutte le skill</option>';
+        skills.forEach(skill => {
+            const option = document.createElement('option');
+            option.value = skill.id;
+            option.textContent = skill.name;
+            selector.appendChild(option);
+        });
+    }
+
+    async function handleSearch() {
+        const skillId = document.getElementById('search-skill-select').value;
+        const minLevel = parseInt(document.getElementById('search-level-slider').value, 10);
+        const bu = document.getElementById('search-bu-select').value;
+        const container = document.getElementById('search-results-container');
+        
+        const resources = await api.getResources();
+        const allSkills = await api.getSkills();
+
+        const filteredResources = resources.filter(resource => {
+            const buMatch = !bu || resource.bu === bu;
+            const skillMatch = !skillId || resource.skills.some(s => s.skillId === skillId && s.level >= minLevel);
+            return buMatch && skillMatch;
+        });
+
+        container.innerHTML = '';
+        if (filteredResources.length === 0) {
+            container.innerHTML = `<div class="text-center py-12 text-gray-500"><i data-lucide="search-x" class="mx-auto h-12 w-12"></i><p class="mt-2">Nessun risultato trovato.</p></div>`;
+            lucide.createIcons();
+            return;
+        }
+
+        const resultsList = document.createElement('div');
+        resultsList.className = 'space-y-4';
+        filteredResources.forEach(res => {
+            const card = document.createElement('div');
+            card.className = 'p-4 border rounded-lg bg-white shadow-sm';
+            let skillsHtml = res.skills.map(s => {
+                const skillInfo = allSkills.find(as => as.id === s.skillId);
+                if (!skillInfo) return '';
+                return `<span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">${skillInfo.name} <span class="font-bold text-blue-600">${s.level}</span></span>`;
+            }).join('');
+            if (!skillsHtml) skillsHtml = '<p class="text-sm text-gray-500">Nessuna competenza assegnata.</p>';
+
+            card.innerHTML = `<div class="flex justify-between items-center"><div><h4 class="text-lg font-bold">${res.nome} ${res.cognome}</h4><p class="text-sm text-gray-600">${res.email} | ${res.bu}</p></div></div><div class="mt-4">${skillsHtml}</div>`;
+            resultsList.appendChild(card);
+        });
+        container.appendChild(resultsList);
+    }
+    
+    // --- UTILITIES ---
+
+    async function updateBuSelectors() {
+        const businessUnits = await api.getBusinessUnits();
+        const selectors = [
+            document.getElementById('resource-bu'),
+            document.getElementById('search-bu-select')
+        ];
+
+        selectors.forEach(selector => {
+            if (!selector) return;
+            
+            const currentValue = selector.value;
+            const firstOption = selector.options[0];
+            selector.innerHTML = '';
+            if (firstOption) {
+                selector.appendChild(firstOption.cloneNode(true));
+            }
+
+            businessUnits.forEach(bu => {
+                const option = document.createElement('option');
+                option.value = bu.name;
+                option.textContent = bu.name;
+                selector.appendChild(option);
+            });
+            selector.value = currentValue;
+        });
+    }
+
+    function showNotification(message, type = 'success') {
+        const modal = document.getElementById('notification-modal');
+        const content = document.getElementById('notification-content');
+        const msg = document.getElementById('notification-message');
+        const iconContainer = document.getElementById('notification-icon');
+        
+        msg.textContent = message;
+        iconContainer.innerHTML = '';
+        let icon, bgColor, iconColor;
+
+        switch (type) {
+            case 'success': icon = 'check'; bgColor = 'bg-green-100'; iconColor = 'text-green-600'; break;
+            case 'warning': icon = 'alert-triangle'; bgColor = 'bg-yellow-100'; iconColor = 'text-yellow-600'; break;
+            case 'error': icon = 'x-circle'; bgColor = 'bg-red-100'; iconColor = 'text-red-600'; break;
+        }
+        
+        iconContainer.className = `mx-auto mb-4 w-12 h-12 rounded-full flex items-center justify-center ${bgColor}`;
+        const iconElement = document.createElement('i');
+        iconElement.setAttribute('data-lucide', icon);
+        iconElement.className = iconColor;
+        iconContainer.appendChild(iconElement);
+        lucide.createIcons();
+
+        modal.classList.remove('hidden');
+        setTimeout(() => content.classList.remove('scale-95', 'opacity-0'), 10);
+        setTimeout(() => {
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }, 2000);
+    }
+
+    // --- INIZIALIZZAZIONE ---
+    window.onload = () => {
+        // Dati di esempio rimossi per iniziare con un'applicazione pulita
+        /*
+        api.addBusinessUnit({name: 'Digital Cloud'});
+        api.addBusinessUnit({name: 'Cybersecurity'});
+        api.addBusinessUnit({name: 'Managed Services'});
+        api.addBusinessUnit({name: 'Digital Commerce'});
+        */
+
+        switchView('risorse');
+        lucide.createIcons();
+    };
+    </script>
+</body>
+</html>
