@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Servizio per il database MariaDB (usato per produzione/staging)
   db:
-    image: docker.io/library/mariadb:10.6
+    image: docker.io/library/mariadb:lts
     container_name: skill-matrix-db
     profiles:
       - prod
