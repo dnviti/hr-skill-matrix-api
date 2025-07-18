@@ -64,6 +64,23 @@ services:
       - .:/home/app:Z
       - sqlite_data:/home/app/data:Z
 
+  # Servizio per l'aggiornamento automatico dei container
+  watchtower:
+    # Immagine ufficiale di Watchtower
+    image: containrrr/watchtower
+    container_name: skill-matrix-watchtower
+    profiles:
+      - prod
+    # Riavvia il container se si ferma inaspettatamente
+    restart: unless-stopped
+    volumes:
+      # Monta il socket di Docker per permettere a Watchtower di interagire con l'API di Docker
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Esegue il controllo degli aggiornamenti ogni 24 ore.
+    # --cleanup rimuove le vecchie immagini non più utilizzate.
+    command: --schedule "0 0 4 * * *" --cleanup
+    # Watchtower non ha bisogno di essere esposto o collegato alla rete dell'app
+
 # Definizioni volumi e reti (invariate)
 volumes:
   mariadb_data:
