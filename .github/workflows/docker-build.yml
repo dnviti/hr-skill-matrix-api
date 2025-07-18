@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - main # Esegui solo quando viene fatto un push sul branch 'main'
+  workflow_dispatch: # Permette di avviare manualmente il workflow
 
 # Definisce i job da eseguire
 jobs:
