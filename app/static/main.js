@@ -291,14 +291,14 @@ function renderStatisticheView() {
       const skillCounts = {};
       resources.forEach((r) =>
         r.skills.forEach((s) => {
-          skillCounts[s.skillId] = (skillCounts[s.skillId] || 0) + 1;
+          skillCounts[s.skill_id] = (skillCounts[s.skillId] || 0) + 1;
         })
       );
       const sortedSkills = Object.entries(skillCounts)
         .sort(([, a], [, b]) => b - a)
         .slice(0, 5);
       const skillNames = sortedSkills.map(
-        ([skillId]) => skills.find((s) => s.id === skillId)?.name || "N/D"
+        ([skillId]) => skills.find((s) => s.id === parseInt(skillId))?.name || "N/D"
       );
       const skillValues = sortedSkills.map(([, count]) => count);
 
@@ -327,7 +327,7 @@ function renderStatisticheView() {
       );
 
       const buCounts = resources.reduce((acc, r) => {
-        acc[r.bu] = (acc[r.bu] || 0) + 1;
+        acc[r.business_unit.name] = (acc[r.business_unit.name] || 0) + 1;
         return acc;
       }, {});
       charts.buDistribution = new Chart(
