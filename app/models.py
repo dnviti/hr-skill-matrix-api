@@ -38,6 +38,45 @@ class Skill(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     
     resource_links: Mapped[List["ResourceSkillLink"]] = relationship(back_populates="skill", cascade="all, delete-orphan")
+    
+    labels: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    
+    @property
+    def labels_list(self) -> List[str]:
+        """Converte la stringa labels in una lista"""
+        if not self.labels:
+            return []
+        return [label.strip() for label in self.labels.split(',') if label.strip()]
+    
+    def set_labels_from_list(self, labels_list: List[str]):
+        """Imposta le labels da una lista di stringhe"""
+        if labels_list:
+            self.labels = ','.join([label.strip() for label in labels_list if label.strip()])
+        else:
+            self.labels = ''
+    
+    def add_label(self, label: str):
+        """Aggiunge una label se non esiste già"""
+        label = label.strip()
+        if not label:
+            return
+        
+        current_labels = self.labels_list
+        if label not in current_labels:
+            current_labels.append(label)
+            self.set_labels_from_list(current_labels)
+    
+    def remove_label(self, label: str):
+        """Rimuove una label se esiste"""
+        label = label.strip()
+        current_labels = self.labels_list
+        if label in current_labels:
+            current_labels.remove(label)
+            self.set_labels_from_list(current_labels)
+    
+    def has_label(self, label: str) -> bool:
+        """Verifica se una label esiste"""
+        return label.strip() in self.labels_list
 
 class BusinessUnit(Base):
     __tablename__ = "business_units"
@@ -57,11 +96,32 @@ class SkillBase(BaseModel):
     name: str
 
 class SkillCreate(SkillBase):
+    labels: Optional[List[str]] = []
     pass
 
 class SkillSchema(SkillBase):
     id: int
+    labels: List[str]
+
     model_config = orm_config
+
+    @classmethod
+    def from_orm(cls, skill: Skill):
+        return cls(
+            id=skill.id,
+            name=skill.name,
+            labels=skill.labels_list  # converte la stringa in lista
+        )
+
+
+class SkillLabelAdd(BaseModel):
+    label: str
+
+class SkillLabelRemove(BaseModel):
+    label: str
+
+class SkillLabelsUpdate(BaseModel):
+    labels: List[str]
 
 # Business Unit
 class BusinessUnitBase(BaseModel):

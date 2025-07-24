@@ -43,6 +43,20 @@ const api = {
       body: JSON.stringify(skills),
     }),
 
+  addLabelToSkill: (skillId, label) =>
+    api.fetchJSON(`/api/skills/${skillId}/labels/add`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label }),
+    }),
+
+  removeLabelFromSkill: (skillId, label) =>
+    api.fetchJSON(`/api/skills/${skillId}/labels/remove`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label }),
+    }),
+
   deleteResource: (resourceId) =>
     api.fetchJSON(`/api/resources/${resourceId}`, { method: "DELETE" }),
   deleteSkill: (skillId) =>
@@ -73,6 +87,7 @@ function switchView(viewId) {
       break;
     case "skills":
       renderSkillsView();
+      loadSkillsWithLabels();
       break;
     case "bu":
       renderBuView();
@@ -792,3 +807,53 @@ window.onload = () => {
   switchView("risorse");
   lucide.createIcons();
 };
+
+function renderSkillListWithLabels(skills) {
+  const container = document.getElementById("skills-list");
+  container.innerHTML = "";
+
+  skills.forEach(skill => {
+    const skillEl = document.createElement("div");
+    skillEl.className = "border p-4 rounded-md shadow-sm";
+
+    const labelsHtml = (skill.labels || []).map(label => `
+      <span class="inline-flex items-center px-2 py-1 mr-2 mb-2 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+        ${label}
+        <button onclick="removeLabel(${skill.id}, '${label}')" class="ml-1 text-red-500 hover:text-red-700 text-sm">×</button>
+      </span>
+    `).join("");
+
+    skillEl.innerHTML = `
+      <h3 class="text-lg font-semibold">${skill.name}</h3>
+      <div class="flex flex-wrap mt-2">${labelsHtml}</div>
+      <div class="mt-2">
+        <input type="text" placeholder="Aggiungi label" id="label-input-${skill.id}" class="border rounded p-1 text-sm mr-2">
+        <button onclick="addLabel(${skill.id})" class="bg-blue-600 text-white px-2 py-1 text-sm rounded hover:bg-blue-700">Aggiungi</button>
+      </div>
+    `;
+
+    container.appendChild(skillEl);
+  });
+}
+
+async function loadSkillsWithLabels() {
+  try {
+    const skills = await api.getSkills();
+    renderSkillListWithLabels(skills);
+  } catch (err) {
+    console.error("Errore durante il caricamento delle skill con label:", err);
+  }
+}
+
+async function addLabel(skillId) {
+  const input = document.getElementById(`label-input-${skillId}`);
+  const label = input.value.trim();
+  if (!label) return;
+  await api.addLabelToSkill(skillId, label);
+  loadSkillsWithLabels();
+}
+
+async function removeLabel(skillId, label) {
+  await api.removeLabelFromSkill(skillId, label);
+  loadSkillsWithLabels();
+}

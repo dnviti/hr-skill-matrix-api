@@ -53,6 +53,10 @@ def get_skills(db: Session, skip: int = 0, limit: int = 100):
 
 def create_skill(db: Session, skill: models.SkillCreate):
     db_skill = models.Skill(name=skill.name)
+    
+    if hasattr(skill, 'labels'):
+        db_skill.set_labels_from_list(skill.labels)
+    
     db.add(db_skill)
     db.commit()
     db.refresh(db_skill)
@@ -64,6 +68,46 @@ def delete_skill(db: Session, skill_id: int):
         db.delete(db_skill)
         db.commit()
     return db_skill
+
+# --- Skill labels ---
+
+def add_skill_label(db: Session, skill_id: int, label: str):
+    """Aggiunge una label a una skill"""
+    skill = db.query(models.Skill).filter(models.Skill.id == skill_id).first()
+    if not skill:
+        return None
+    
+    skill.add_label(label)
+    db.commit()
+    db.refresh(skill)
+    return skill
+
+def remove_skill_label(db: Session, skill_id: int, label: str):
+    """Rimuove una label da una skill"""
+    skill = db.query(models.Skill).filter(models.Skill.id == skill_id).first()
+    if not skill:
+        return None
+    
+    skill.remove_label(label)
+    db.commit()
+    db.refresh(skill)
+    return skill
+
+def get_skills_by_label(db: Session, label: str, skip: int = 0, limit: int = 100):
+    """Trova tutte le skill che hanno una specifica label"""
+    return db.query(models.Skill).filter(
+        models.Skill.labels.like(f"%{label}%")
+    ).offset(skip).limit(limit).all()
+
+def get_all_labels(db: Session):
+    """Ottiene tutte le label uniche esistenti"""
+    skills = db.query(models.Skill).filter(models.Skill.labels.isnot(None)).all()
+    all_labels = set()
+    
+    for skill in skills:
+        all_labels.update(skill.labels_list)
+    
+    return sorted(list(all_labels))
 
 # --- Resource ---
 def get_resource(db: Session, resource_id: int):
