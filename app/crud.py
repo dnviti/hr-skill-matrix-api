@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
+from typing import List
 from . import models
 
 # --- Business Unit ---
@@ -22,7 +23,7 @@ def delete_business_unit(db: Session, bu_id: int, options: models.BuDeleteOption
     db_bu = get_business_unit(db, bu_id)
     if not db_bu:
         return None
-    
+
     resources_in_bu = db.query(models.Resource).filter(models.Resource.business_unit_id == bu_id).all()
 
     if options.action == "migrate":
@@ -36,7 +37,7 @@ def delete_business_unit(db: Session, bu_id: int, options: models.BuDeleteOption
     elif options.action == "delete":
         for resource in resources_in_bu:
             db.delete(resource)
-    
+
     db.delete(db_bu)
     db.commit()
     return db_bu
@@ -53,26 +54,63 @@ def get_skills(db: Session, skip: int = 0, limit: int = 100):
 
 def create_skill(db: Session, skill: models.SkillCreate):
     db_skill = models.Skill(name=skill.name)
+    if skill.labels is not None:
+        db_skill.set_labels_from_list(skill.labels)
     db.add(db_skill)
     db.commit()
     db.refresh(db_skill)
     return db_skill
 
 def delete_skill(db: Session, skill_id: int):
-    db_skill = db.query(models.Skill).filter(models.Skill.id == skill_id).first()
+    db_skill = get_skill(db, skill_id)
     if db_skill:
         db.delete(db_skill)
         db.commit()
     return db_skill
 
+def update_skill_labels(db: Session, skill_id: int, labels: List[str]):
+    db_skill = get_skill(db, skill_id)
+    if not db_skill:
+        return None
+    db_skill.set_labels_from_list(labels)
+    db.add(db_skill)
+    db.commit()
+    db.refresh(db_skill)
+    return db_skill
+
+def add_skill_label(db: Session, skill_id: int, label: str):
+    db_skill = get_skill(db, skill_id)
+    if not db_skill:
+        return None
+    db_skill.add_label(label)
+    db.add(db_skill)
+    db.commit()
+    db.refresh(db_skill)
+    return db_skill
+
+def remove_skill_label(db: Session, skill_id: int, label: str):
+    db_skill = get_skill(db, skill_id)
+    if not db_skill:
+        return None
+    db_skill.remove_label(label)
+    db.add(db_skill)
+    db.commit()
+    db.refresh(db_skill)
+    return db_skill
+
 # --- Resource ---
+def get_resource_by_email(db: Session, email: str):
+    return db.query(models.Resource).filter(models.Resource.email == email).first()
+
 def get_resource(db: Session, resource_id: int):
+    # Eager load business_unit and skill_links to avoid N+1 queries
     return db.query(models.Resource).options(
         joinedload(models.Resource.business_unit),
         joinedload(models.Resource.skill_links).joinedload(models.ResourceSkillLink.skill)
     ).filter(models.Resource.id == resource_id).first()
 
 def get_resources(db: Session, skip: int = 0, limit: int = 100):
+    # Eager load business_unit and skill_links
     return db.query(models.Resource).options(
         joinedload(models.Resource.business_unit),
         joinedload(models.Resource.skill_links).joinedload(models.ResourceSkillLink.skill)
@@ -98,22 +136,33 @@ def delete_resource(db: Session, resource_id: int):
         db.commit()
     return db_resource
 
-def update_resource_skills(db: Session, resource_id: int, skills: list[models.ResourceSkillUpdate]):
+def update_resource_skills(db: Session, resource_id: int, skills_data: List[models.ResourceSkillUpdate]):
     db_resource = get_resource(db, resource_id)
     if not db_resource:
         return None
-    
-    # Rimuovi le vecchie associazioni
+
+    # Clear existing skill links
     db_resource.skill_links.clear()
-    
-    # Aggiungi le nuove associazioni
-    for skill_data in skills:
+
+    # Add new skill links
+    for skill_data in skills_data:
+        # Check if the skill exists
+        db_skill = get_skill(db, skill_data.skill_id)
+        if not db_skill:
+            raise ValueError(f"Skill with ID {skill_data.skill_id} not found.")
+
+        # Create new link
         link = models.ResourceSkillLink(
+            resource_id=resource_id,
             skill_id=skill_data.skill_id,
-            level=skill_data.level
+            level=skill_data.level,
         )
+        # Imposta le label dal frontend (che sono già una lista)
+        if skill_data.labels is not None:
+            link.set_labels_from_list(skill_data.labels)
+
         db_resource.skill_links.append(link)
-        
+
     db.commit()
     db.refresh(db_resource)
     return db_resource

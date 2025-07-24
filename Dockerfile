@@ -25,6 +25,8 @@ RUN pip install --no-cache /wheels/*
 
 COPY ./app /home/app/app
 
+RUN mkdir -p /home/app/data && chmod 777 /home/app/data
+
 RUN chown -R app:app /home/app
 
 USER app
