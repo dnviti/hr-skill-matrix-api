@@ -1,0 +1,57 @@
+appDeployment:
+  replicas: 1
+  skillMatrixApp:
+    image:
+      repository: ghcr.io/dnviti/hr-skill-matrix-api
+      tag: latest
+    imagePullPolicy: IfNotPresent
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 200m
+        memory: 256Mi
+  waitForMariadb:
+    image:
+      repository: busybox
+      tag: 1.36.1
+
+appService:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8000
+  type: ClusterIP
+
+ingress:
+  enabled: true
+  className: "nginx"  # oppure "traefik" o altri se usi ingress controller diversi
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # solo se usi cert-manager
+  hosts:
+    - host: skill-matrix.local  # cambia in base al dominio reale
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - skill-matrix.local
+      secretName: skill-matrix-tls
+
+kubernetesClusterDomain: cluster.local
+
+mariadb:
+  auth:
+    rootPassword: changeme-root
+    username: example_user
+    password: example_password
+    database: example_db
+
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+      # storageClass: "default"  # <-- scommenta se vuoi specificare una StorageClass

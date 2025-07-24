@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hr-skill-matrix.fullname" . }}-app-deployment
+  labels:
+    app: skill-matrix-app
+  {{- include "hr-skill-matrix.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.appDeployment.replicas }}
+  selector:
+    matchLabels:
+      app: skill-matrix-app
+    {{- include "hr-skill-matrix.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: skill-matrix-app
+      {{- include "hr-skill-matrix.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - env:
+        - name: DATABASE_URL
+          value: mysql+pymysql://$(DB_USER):$(DB_PASSWORD)@mariadb-service:3306/$(DB_DATABASE)
+          valueFrom:
+            secretKeyRef:
+              key: DB_DATABASE
+              name: {{ include "hr-skill-matrix.fullname" . }}-db-credentials
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              key: DB_USER
+              name: {{ include "hr-skill-matrix.fullname" . }}-db-credentials
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: DB_PASSWORD
+              name: {{ include "hr-skill-matrix.fullname" . }}-db-credentials
+        - name: DB_DATABASE
+          valueFrom:
+            secretKeyRef:
+              key: DB_DATABASE
+              name: {{ include "hr-skill-matrix.fullname" . }}-db-credentials
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: {{ .Values.appDeployment.skillMatrixApp.image.repository }}:{{ .Values.appDeployment.skillMatrixApp.image.tag
+          | default .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.appDeployment.skillMatrixApp.imagePullPolicy }}
+        name: skill-matrix-app
+        ports:
+        - containerPort: 8000
+        resources: {{- toYaml .Values.appDeployment.skillMatrixApp.resources | nindent
+          10 }}
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - until nc -z mariadb-service 3306; do echo waiting for mariadb; sleep 2; done;
+        env:
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: {{ .Values.appDeployment.waitForMariadb.image.repository }}:{{ .Values.appDeployment.waitForMariadb.image.tag
+          | default .Chart.AppVersion }}
+        name: wait-for-mariadb
+        resources: {}
