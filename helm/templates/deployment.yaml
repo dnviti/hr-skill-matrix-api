@@ -18,12 +18,12 @@ spec:
       {{- include "hr-skill-matrix.selectorLabels" . | nindent 8 }}
     spec:
       containers:
-      env:
-      - name: DATABASE_URL
-        valueFrom:
-          secretKeyRef:
-            name: {{ include "hr-skill-matrix.fullname" . }}-db-credentials
-            key: DATABASE_URL
+      - env:
+          name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "hr-skill-matrix.fullname" . }}-db-credentials
+              key: DATABASE_URL
         image: {{ .Values.appDeployment.skillMatrixApp.image.repository }}:{{ .Values.appDeployment.skillMatrixApp.image.tag
           | default .Chart.AppVersion }}
         imagePullPolicy: {{ .Values.appDeployment.skillMatrixApp.imagePullPolicy }}
