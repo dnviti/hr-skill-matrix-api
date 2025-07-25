@@ -18,26 +18,12 @@ spec:
       {{- include "hr-skill-matrix.selectorLabels" . | nindent 8 }}
     spec:
       containers:
-      - env:
-        - name: DATABASE_URL
-          value: mysql+mysqlconnector://$(DB_USER):$(DB_PASSWORD)@{{ .Release.Name }}-mariadb:3306/$(DB_DATABASE)
-        - name: DB_USER
-          valueFrom:
-            secretKeyRef:
-              key: DB_USER
-              name: {{ include "hr-skill-matrix.fullname" . }}-db-credentials
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: DB_PASSWORD
-              name: {{ include "hr-skill-matrix.fullname" . }}-db-credentials
-        - name: DB_DATABASE
-          valueFrom:
-            secretKeyRef:
-              key: DB_DATABASE
-              name: {{ include "hr-skill-matrix.fullname" . }}-db-credentials
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: {{ quote .Values.kubernetesClusterDomain }}
+      env:
+      - name: DATABASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: {{ include "hr-skill-matrix.fullname" . }}-db-credentials
+            key: DATABASE_URL
         image: {{ .Values.appDeployment.skillMatrixApp.image.repository }}:{{ .Values.appDeployment.skillMatrixApp.image.tag
           | default .Chart.AppVersion }}
         imagePullPolicy: {{ .Values.appDeployment.skillMatrixApp.imagePullPolicy }}
