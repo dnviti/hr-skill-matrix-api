@@ -20,7 +20,7 @@ spec:
       containers:
       - env:
         - name: DATABASE_URL
-          value: mysql+mysqlconnector://$(DB_USER):$(DB_PASSWORD)@mariadb-service:3306/$(DB_DATABASE)
+          value: mysql+mysqlconnector://$(DB_USER):$(DB_PASSWORD)@{{ .Release.Name }}-mariadb:3306/$(DB_DATABASE)
         - name: DB_USER
           valueFrom:
             secretKeyRef:
