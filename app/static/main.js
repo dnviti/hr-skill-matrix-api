@@ -758,7 +758,7 @@ async function confirmDelete(type, id, name) {
       targetSelect.innerHTML = "";
       if (otherBus.length === 0) {
         document.getElementById("bu-delete-option-migrate").disabled = true;
-        document.getElementById("bu-delete-option-delete-resources").checked = true;
+        document.getElementById("bu-delete-option-delete").checked = true; // Use the correct ID for the delete option
         targetSelect.innerHTML = '<option value="">Nessuna BU disponibile per migrazione</option>';
       } else {
         document.getElementById("bu-delete-option-migrate").disabled = false;
@@ -771,16 +771,17 @@ async function confirmDelete(type, id, name) {
         });
         document.getElementById("bu-delete-option-migrate").checked = true;
       }
-      document.getElementById("bu-id-to-delete").value = id;
+      // Set a data attribute on the modal or a hidden input for the BU ID
+      buDeleteModal.setAttribute("data-bu-id", id); // Store ID on the modal itself
       buDeleteModal.classList.remove("hidden");
     } else {
-      document.getElementById("delete-item-name").textContent = name;
+      document.getElementById("confirm-delete-message").textContent = `Sei sicuro di voler eliminare ${name}? L'azione è irreversibile.`;
       document.getElementById("confirm-delete-btn").onclick = () =>
         handleDelete(type, id);
       confirmDeleteModal.classList.remove("hidden");
     }
   } else {
-    document.getElementById("delete-item-name").textContent = name;
+    document.getElementById("confirm-delete-message").textContent = `Sei sicuro di voler eliminare ${name}? L'azione è irreversibile.`;
     document.getElementById("confirm-delete-btn").onclick = () =>
       handleDelete(type, id);
     confirmDeleteModal.classList.remove("hidden");
@@ -798,6 +799,7 @@ async function handleDelete(type, id) {
       await api.deleteSkill(id);
       renderSkillsList();
       updateSearchSkillSelector();
+      loadAllSkillsForAssignment(); // Refresh skills for assignment view
       showNotification("Skill eliminata con successo!", "success");
     }
     closeModals();
@@ -807,8 +809,8 @@ async function handleDelete(type, id) {
 }
 
 async function handleDeleteBusinessUnitConfirmed() {
-    const buId = document.getElementById("bu-id-to-delete").value;
-    const action = document.querySelector('input[name="bu-delete-action"]:checked').value;
+    const buId = buDeleteModal.getAttribute("data-bu-id"); // Get ID from modal data attribute
+    const action = document.querySelector('input[name="bu-delete-option"]:checked').value;
     let targetBuId = null;
 
     if (action === "migrate") {
@@ -932,24 +934,52 @@ async function loadStats() {
   }
 }
 
-// Initial view load
+// --- Theme Toggling Logic ---
+const themeToggleBtn = document.getElementById("theme-toggle");
+const body = document.body;
+
+function applySavedTheme() {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+        body.setAttribute("data-theme", savedTheme);
+        // Refresh Lucide icons to ensure correct rendering of moon/sun based on theme
+        lucide.createIcons();
+    } else {
+        // Default to light theme if no preference is saved
+        body.setAttribute("data-theme", "light");
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = body.getAttribute("data-theme");
+    const newTheme = currentTheme === "light" ? "dark" : "light";
+    body.setAttribute("data-theme", newTheme);
+    localStorage.setItem("theme", newTheme);
+    lucide.createIcons(); // Re-render icons after theme change
+}
+
+// Initial view load and theme application
 document.addEventListener("DOMContentLoaded", () => {
+  applySavedTheme(); // Apply theme before switching view to prevent flash
   switchView("risorse");
 });
 
 // Modals event listeners (unchanged)
 document.getElementById("cancel-delete-btn").addEventListener("click", closeModals);
-document.getElementById("bu-delete-cancel-btn").addEventListener("click", closeModals);
-document.getElementById("bu-delete-confirm-btn").addEventListener("click", handleDeleteBusinessUnitConfirmed);
+// Corrected event listener for BU delete modal cancel button
+document.getElementById("cancel-bu-delete-btn").addEventListener("click", closeModals); 
+document.getElementById("confirm-bu-delete-btn").addEventListener("click", handleDeleteBusinessUnitConfirmed);
 document.getElementById("bu-delete-option-migrate").addEventListener("change", (e) => {
     document.getElementById("bu-migrate-target-select").disabled = !e.target.checked;
 });
-document.getElementById("bu-delete-option-delete-resources").addEventListener("change", (e) => {
+document.getElementById("bu-delete-option-delete").addEventListener("change", (e) => {
     document.getElementById("bu-migrate-target-select").disabled = e.target.checked;
 });
 
-// `currentSkillForLabel` and modal functions are no longer needed for adding labels
-// The `addLabelToSkill` and `removeLabel` functions are now called directly from inline buttons.
+// Add event listener for theme toggle button
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", toggleTheme);
+}
 
 // Function to add a label to a skill (now takes skillId directly)
 async function addLabelToSkill(skillId) {

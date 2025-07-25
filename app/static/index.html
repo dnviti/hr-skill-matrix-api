@@ -6,16 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VarGroup - Skill Matrix</title>
 
-    <!-- Tailwind CSS per lo stile -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Icone Lucide per una migliore UI -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Chart.js per le statistiche -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Font Inter per un look moderno -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -23,17 +19,19 @@
     <link rel="stylesheet" href="style.css">
 </head>
 
-<body class="text-gray-800">
+<body data-theme="light">
 
     <div class="container mx-auto p-4 md:p-8">
 
-        <!-- Intestazione -->
-        <header class="text-center mb-8">
+        <header class="text-center mb-8 relative">
             <h1 class="text-4xl font-bold text-blue-600">Var<span class="text-gray-700">Group</span></h1>
             <p class="text-xl text-gray-500 mt-2">Skill Matrix Management</p>
+            <div id="theme-toggle" class="absolute top-0 right-0 p-4 cursor-pointer">
+                <i data-lucide="moon" class="w-6 h-6 text-gray-700 dark:hidden"></i>
+                <i data-lucide="sun" class="w-6 h-6 text-yellow-500 hidden dark:block"></i>
+            </div>
         </header>
 
-        <!-- Navigazione a Tab -->
         <div class="mb-8 border-b border-gray-200">
             <nav class="flex flex-wrap -mb-px space-x-4" aria-label="Tabs">
                 <button onclick="switchView('risorse')" id="tab-risorse"
@@ -63,7 +61,6 @@
             </nav>
         </div>
 
-        <!-- Contenuto dinamico delle sezioni -->
         <main>
             <section id="view-risorse" class="view-section"></section>
             <section id="view-skills" class="view-section hidden"></section>
@@ -74,7 +71,6 @@
         </main>
     </div>
 
-    <!-- MODALI -->
     <div id="notification-modal"
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 modal-backdrop">
         <div class="bg-white rounded-lg shadow-xl p-6 w-11/12 md:w-1/3 text-center">
