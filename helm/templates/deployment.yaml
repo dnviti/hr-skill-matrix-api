@@ -47,14 +47,16 @@ spec:
         resources: {{- toYaml .Values.appDeployment.skillMatrixApp.resources | nindent
           10 }}
       initContainers:
-      - command:
+      - name: wait-for-mariadb
+        image: {{ .Values.appDeployment.waitForMariadb.image.repository }}:{{ .Values.appDeployment.waitForMariadb.image.tag | default .Chart.AppVersion }}
+        command:
         - sh
         - -c
-        - until nc -z mariadb-service 3306; do echo waiting for mariadb; sleep 2; done;
-        env:
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: {{ quote .Values.kubernetesClusterDomain }}
-        image: {{ .Values.appDeployment.waitForMariadb.image.repository }}:{{ .Values.appDeployment.waitForMariadb.image.tag
-          | default .Chart.AppVersion }}
-        name: wait-for-mariadb
+        - |
+          echo "Waiting for MariaDB at {{ .Release.Name }}-mariadb:3306..."
+          until nc -z {{ .Release.Name }}-mariadb 3306; do
+            echo "MariaDB not ready yet, sleeping..."
+            sleep 2
+          done
+          echo "MariaDB is up!"
         resources: {}
