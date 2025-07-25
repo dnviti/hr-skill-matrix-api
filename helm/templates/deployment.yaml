@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - env:
-          name: DATABASE_URL
+        - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
               name: {{ include "hr-skill-matrix.fullname" . }}-db-credentials
