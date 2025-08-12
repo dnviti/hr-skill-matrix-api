@@ -13,6 +13,7 @@ load_dotenv()
 # 1. Importa i router delle API
 from .routers import resources, skills, business_units, auth
 from .database import engine, Base
+from .middleware import GlobalAuthMiddleware
 
 # Crea le tabelle nel database
 Base.metadata.create_all(bind=engine)
@@ -39,6 +40,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Middleware di autenticazione globale
+# IMPORTANTE: Questo deve essere aggiunto DOPO CORS ma PRIMA dei router
+app.add_middleware(GlobalAuthMiddleware)
 
 # 2. Includi i router dell'API
 app.include_router(auth.router)
@@ -68,19 +73,38 @@ def health_check():
     """Endpoint di health check per verificare che l'API sia attiva."""
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
+@app.get("/api/health/live", tags=["Health Check"])
+def liveness_check():
+    """Endpoint di liveness check semplice."""
+    return {"status": "alive", "timestamp": datetime.utcnow().isoformat()}
+
 @app.get("/api/health/ready", tags=["Health Check"])
 def readiness_check():
     """Endpoint di readiness check per verificare che l'API sia pronta ad accettare traffico."""
     try:
-        # Verifica la connessione al database
+        # Verifica la connessione al database e l'esistenza delle tabelle
         from .database import SessionLocal
+        from . import models
+        
         db = SessionLocal()
         try:
-            # Esegue una query semplice per verificare la connessione
-            db.execute("SELECT 1")
+            # Verifica che le tabelle principali esistano facendo una query count
+            skill_count = db.query(models.Skill).count()
+            bu_count = db.query(models.BusinessUnit).count()
+            resource_count = db.query(models.Resource).count()
+            
             db_status = "ok"
+            tables_info = {
+                "skills": skill_count,
+                "business_units": bu_count, 
+                "resources": resource_count
+            }
+            
         except Exception as e:
+            # Log dell'errore ma non fallire immediatamente
+            print(f"Database check failed: {str(e)}")
             db_status = f"error: {str(e)}"
+            tables_info = None
         finally:
             db.close()
         
@@ -88,24 +112,29 @@ def readiness_check():
             return {
                 "status": "ready",
                 "database": "ok",
+                "tables": tables_info,
                 "timestamp": datetime.utcnow().isoformat()
             }
         else:
+            # Restituisci 503 ma con più dettagli
             raise HTTPException(
                 status_code=503,
                 detail={
                     "status": "not ready",
                     "database": db_status,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "message": "Database not ready yet"
                 }
             )
     except Exception as e:
+        print(f"Readiness check failed: {str(e)}")
         raise HTTPException(
             status_code=503,
             detail={
                 "status": "not ready",
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
+                "message": "Service not ready"
             }
         )
 

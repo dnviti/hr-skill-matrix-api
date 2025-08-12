@@ -27,14 +27,20 @@ class AuthConfig:
         # URLs derivate dall'issuer
         if self.oidc_issuer:
             self.oidc_discovery_url = f"{self.oidc_issuer.rstrip('/')}/.well-known/openid_configuration"
-            self.oidc_auth_url = f"{self.oidc_issuer.rstrip('/')}/auth"
-            self.oidc_token_url = f"{self.oidc_issuer.rstrip('/')}/token"
-            self.oidc_userinfo_url = f"{self.oidc_issuer.rstrip('/')}/userinfo"
-            self.oidc_jwks_url = f"{self.oidc_issuer.rstrip('/')}/jwks"
+            # URL di fallback basati su quello che sappiamo di Authentik
+            # Authorization, token, userinfo sono senza il nome dell'app
+            issuer_base = self.oidc_issuer.rstrip('/').replace('/skillmatrix', '')
+            self.oidc_auth_url = f"{issuer_base}/authorize/"
+            self.oidc_token_url = f"{issuer_base}/token/"
+            self.oidc_userinfo_url = f"{issuer_base}/userinfo/"
+            # JWKS invece è con il nome dell'app
+            self.oidc_jwks_url = f"{self.oidc_issuer.rstrip('/')}/jwks/"
         
-        # Cache per le chiavi pubbliche
+        # Cache per le chiavi pubbliche e discovery
         self._jwks_cache: Optional[Dict] = None
         self._jwks_cache_expiry: Optional[datetime] = None
+        self._discovery_cache: Optional[Dict] = None
+        self._discovery_cache_expiry: Optional[datetime] = None
         
     def validate_config(self):
         """Valida la configurazione OIDC"""
@@ -74,29 +80,87 @@ class AuthService:
         self.config = AuthConfig()
         self.config.validate_config()
         self.security = HTTPBearer(auto_error=False)
+        # Flag per indicare se il discovery è stato fatto
+        self._discovery_initialized = False
         
-    async def get_jwks(self) -> Dict:
-        """Recupera le chiavi pubbliche dal provider OIDC con cache"""
+    async def ensure_discovery_initialized(self):
+        """Assicura che il discovery OIDC sia stato eseguito almeno una volta"""
+        if not self.config.oidc_enabled:
+            return
+            
+        if not self._discovery_initialized:
+            await self.get_oidc_discovery()
+            self._discovery_initialized = True
+        
+    async def get_oidc_discovery(self) -> Dict:
+        """Recupera la configurazione OIDC discovery con cache"""
         if not self.config.oidc_enabled:
             return {}
             
         now = datetime.utcnow()
         
         # Usa la cache se ancora valida (cache per 1 ora)
-        if (self._jwks_cache and 
-            self._jwks_cache_expiry and 
-            now < self._jwks_cache_expiry):
-            return self._jwks_cache
+        if (self.config._discovery_cache and 
+            self.config._discovery_cache_expiry and 
+            now < self.config._discovery_cache_expiry):
+            return self.config._discovery_cache
             
         try:
             async with httpx.AsyncClient() as client:
+                response = await client.get(self.config.oidc_discovery_url, timeout=10.0)
+                response.raise_for_status()
+                
+                self.config._discovery_cache = response.json()
+                self.config._discovery_cache_expiry = now + timedelta(hours=1)
+                
+                # Aggiorna gli URL con quelli ottenuti dalla discovery
+                discovery = self.config._discovery_cache
+                self.config.oidc_auth_url = discovery.get("authorization_endpoint", self.config.oidc_auth_url)
+                self.config.oidc_token_url = discovery.get("token_endpoint", self.config.oidc_token_url)
+                self.config.oidc_userinfo_url = discovery.get("userinfo_endpoint", self.config.oidc_userinfo_url)
+                self.config.oidc_jwks_url = discovery.get("jwks_uri", self.config.oidc_jwks_url)
+                
+                print(f"OIDC Discovery completato:")
+                print(f"  Authorization URL: {self.config.oidc_auth_url}")
+                print(f"  Token URL: {self.config.oidc_token_url}")
+                print(f"  JWKS URL: {self.config.oidc_jwks_url}")
+                
+                return self.config._discovery_cache
+                
+        except Exception as e:
+            print(f"Errore OIDC discovery: {str(e)}")
+            print(f"   URL discovery: {self.config.oidc_discovery_url}")
+            print(f"   Usando URL di fallback...")
+            # Ritorna configurazione vuota, useremo gli URL di fallback
+            return {}
+    
+    async def get_jwks(self) -> Dict:
+        """Recupera le chiavi pubbliche dal provider OIDC con cache"""
+        if not self.config.oidc_enabled:
+            return {}
+        
+        # Assicura che il discovery sia stato fatto per avere l'URL JWKS corretto
+        await self.ensure_discovery_initialized()
+            
+        now = datetime.utcnow()
+        
+        # Usa la cache se ancora valida (cache per 1 ora)
+        if (self.config._jwks_cache and 
+            self.config._jwks_cache_expiry and 
+            now < self.config._jwks_cache_expiry):
+            return self.config._jwks_cache
+            
+        try:
+            print(f"Recuperando JWKS da: {self.config.oidc_jwks_url}")
+            async with httpx.AsyncClient(follow_redirects=True) as client:
                 response = await client.get(self.config.oidc_jwks_url, timeout=10.0)
                 response.raise_for_status()
                 
-                self._jwks_cache = response.json()
-                self._jwks_cache_expiry = now + timedelta(hours=1)
+                self.config._jwks_cache = response.json()
+                self.config._jwks_cache_expiry = now + timedelta(hours=1)
                 
-                return self._jwks_cache
+                print(f"JWKS recuperato con successo")
+                return self.config._jwks_cache
                 
         except Exception as e:
             raise HTTPException(

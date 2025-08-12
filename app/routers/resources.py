@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 from .. import crud, models
 from ..database import get_db
-from ..auth import get_current_user, get_current_admin_user, UserInfo
+from ..dependencies import get_current_user_from_request, get_current_admin_user_from_request
+from ..auth import UserInfo
 
 router = APIRouter(
     prefix="/api/resources",
@@ -34,9 +35,12 @@ def format_resource_response(db_resource: models.Resource) -> dict:
 @router.post("", response_model=models.ResourceSchema, status_code=201)
 def create_new_resource(
     resource: models.ResourceCreate, 
-    db: Session = Depends(get_db),
-    current_user: UserInfo = Depends(get_current_admin_user)
+    request: Request,
+    db: Session = Depends(get_db)
 ):
+    # Verifica che l'utente sia admin
+    current_user = get_current_admin_user_from_request(request)
+    
     db_resource = crud.get_resource_by_email(db, email=resource.email)
     if db_resource:
         raise HTTPException(status_code=400, detail="Resource with this email already registered")
@@ -45,20 +49,26 @@ def create_new_resource(
 
 @router.get("", response_model=List[models.ResourceSchema])
 def read_all_resources(
+    request: Request,
     skip: int = 0, 
     limit: int = 100, 
-    db: Session = Depends(get_db),
-    current_user: UserInfo = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
+    # L'utente è già autenticato dal middleware globale
+    current_user = get_current_user_from_request(request)
+    
     resources = crud.get_resources(db, skip=skip, limit=limit)
     return [format_resource_response(res) for res in resources]
 
 @router.get("/{resource_id}", response_model=models.ResourceSchema)
 def read_resource(
     resource_id: int, 
-    db: Session = Depends(get_db),
-    current_user: UserInfo = Depends(get_current_user)
+    request: Request,
+    db: Session = Depends(get_db)
 ):
+    # L'utente è già autenticato dal middleware globale
+    current_user = get_current_user_from_request(request)
+    
     db_resource = crud.get_resource(db, resource_id=resource_id)
     if db_resource is None:
         raise HTTPException(status_code=404, detail="Resource not found")
@@ -67,9 +77,12 @@ def read_resource(
 @router.delete("/{resource_id}", status_code=204)
 def delete_existing_resource(
     resource_id: int, 
-    db: Session = Depends(get_db),
-    current_user: UserInfo = Depends(get_current_admin_user)
+    request: Request,
+    db: Session = Depends(get_db)
 ):
+    # Verifica che l'utente sia admin
+    current_user = get_current_admin_user_from_request(request)
+    
     db_resource = crud.delete_resource(db, resource_id=resource_id)
     if db_resource is None:
         raise HTTPException(status_code=404, detail="Resource not found")
@@ -79,9 +92,12 @@ def delete_existing_resource(
 def update_resource_skills_endpoint(
     resource_id: int,
     skills: List[models.ResourceSkillUpdate], # Accetta le label come lista
-    db: Session = Depends(get_db),
-    current_user: UserInfo = Depends(get_current_admin_user)
+    request: Request,
+    db: Session = Depends(get_db)
 ):
+    # Verifica che l'utente sia admin
+    current_user = get_current_admin_user_from_request(request)
+    
     try:
         updated_resource = crud.update_resource_skills(db, resource_id, skills)
         if updated_resource is None:

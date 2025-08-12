@@ -30,8 +30,8 @@ auth:
   
   # Configurazione del provider OIDC (es: Authentik)
   oidc:
-    # URL dell'issuer di Authentik 
-    # Esempio: issuer: "https://auth.example.com/application/o/hr-skill-matrix/"
+    # URL dell'issuer di Authentik (include il nome dell'applicazione per il discovery)
+    # Esempio: issuer: "https://auth.example.com/application/o/skillmatrix/"
     issuer: ""
     
     # Client ID dell'applicazione configurata nel provider OIDC
