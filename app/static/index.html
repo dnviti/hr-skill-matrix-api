@@ -5,6 +5,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VarGroup - Skill Matrix</title>
+    
+    <!-- Script per evitare il flash del tema -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme-preference') || 'auto';
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            let themeToApply;
+            if (savedTheme === 'auto') {
+                themeToApply = systemPrefersDark ? 'dark' : 'light';
+            } else {
+                themeToApply = savedTheme;
+            }
+            
+            // Applica il tema al document element (sempre disponibile)
+            document.documentElement.setAttribute('data-theme', themeToApply);
+            
+            // Applica il tema al body solo se esiste, altrimenti aspetta il DOMContentLoaded
+            if (document.body) {
+                document.body.setAttribute('data-theme', themeToApply);
+            } else {
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.body.setAttribute('data-theme', themeToApply);
+                });
+            }
+        })();
+    </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -19,35 +46,55 @@
     <link rel="stylesheet" href="style.css">
 </head>
 
-<body data-theme="light">
+<body>
 
     <div class="container mx-auto p-4 md:p-8">
 
         <header class="text-center mb-8 relative">
             <h1 class="text-4xl font-bold text-blue-600">Var<span class="text-gray-700">Group</span></h1>
             <p class="text-xl text-gray-500 mt-2">Skill Matrix Management</p>
-            <div id="theme-toggle" class="absolute top-0 right-0 p-4 cursor-pointer">
-                <i data-lucide="moon" class="w-6 h-6 text-gray-700 dark:hidden"></i>
-                <i data-lucide="sun" class="w-6 h-6 text-yellow-500 hidden dark:block"></i>
+            
+            <!-- Area utente e controlli in alto a destra -->
+            <div class="absolute top-0 right-0 flex items-center space-x-4 p-4">
+                <!-- Info utente (nascosto se non autenticato) -->
+                <div id="user-info" class="hidden flex items-center space-x-3 bg-white dark:bg-gray-800 rounded-lg px-4 py-2 shadow-sm border border-gray-200 dark:border-gray-600">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                            <span id="user-initials">U</span>
+                        </div>
+                        <div class="text-left">
+                            <p id="user-name" class="text-sm font-medium text-gray-900 dark:text-gray-100"></p>
+                            <p id="user-email" class="text-xs text-gray-500 dark:text-gray-400"></p>
+                        </div>
+                    </div>
+                    <button id="logout-btn" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded transition-colors" title="Logout">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                
+                <!-- Toggle tema -->
+                <div id="theme-toggle" class="cursor-pointer">
+                    <!-- Le icone del tema saranno gestite dinamicamente dal JavaScript -->
+                </div>
             </div>
         </header>
 
         <div class="mb-8 border-b border-gray-200">
             <nav class="flex flex-wrap -mb-px space-x-4" aria-label="Tabs">
                 <button onclick="switchView('risorse')" id="tab-risorse"
-                    class="tab-button group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
+                    class="tab-button admin-only group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
                     <i data-lucide="users" class="mr-2"></i> Gestione Risorse
                 </button>
                 <button onclick="switchView('skills')" id="tab-skills"
-                    class="tab-button group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
+                    class="tab-button admin-only group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
                     <i data-lucide="wrench" class="mr-2"></i> Gestione Skills
                 </button>
                 <button onclick="switchView('bu')" id="tab-bu"
-                    class="tab-button group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
+                    class="tab-button admin-only group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
                     <i data-lucide="briefcase" class="mr-2"></i> Gestione BU
                 </button>
                 <button onclick="switchView('assegna')" id="tab-assegna"
-                    class="tab-button group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
+                    class="tab-button admin-only group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm">
                     <i data-lucide="sliders-horizontal" class="mr-2"></i> Assegna Competenze
                 </button>
                 <button onclick="switchView('ricerca')" id="tab-ricerca"

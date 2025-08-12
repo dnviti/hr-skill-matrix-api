@@ -1,3 +1,11 @@
+// --- LOGGING LAYER ---
+const logger = {
+  debug: (message, ...args) => console.debug('[DEBUG]', message, ...args),
+  info: (message, ...args) => console.log('[INFO]', message, ...args),
+  warn: (message, ...args) => console.warn('[WARN]', message, ...args),
+  error: (message, ...args) => console.error('[ERROR]', message, ...args)
+};
+
 // --- AUTHENTICATION LAYER ---
 const auth = {
   getToken: () => localStorage.getItem('access_token'),
@@ -7,10 +15,19 @@ const auth = {
   },
   isAuthenticated: () => !!auth.getToken(),
   logout: () => {
+    const idToken = localStorage.getItem('id_token');
+    logger.info('🚪 Logout richiesto. Pulizia dati locali...');
+    
+    // Pulisce i dati dal localStorage
     localStorage.removeItem('access_token');
     localStorage.removeItem('id_token');
     localStorage.removeItem('user_info');
-    window.location.href = '/auth/logout';
+    
+    // Reindirizza all'endpoint di logout del backend, che gestirà il redirect a Authentik
+    // Passiamo l'id_token come "hint" per invalidare la sessione corretta
+    const logoutUrl = `/auth/perform_logout?id_token_hint=${encodeURIComponent(idToken || '')}`;
+    logger.info(`🚀 Reindirizzamento a ${logoutUrl} per il logout...`);
+    window.location.href = logoutUrl;
   },
   checkAuth: async () => {
     // Controlla se l'autenticazione è abilitata
@@ -126,6 +143,18 @@ const tabs = document.querySelectorAll(".tab-button");
 let charts = {};
 
 function switchView(viewId) {
+  // Verifica se l'utente ha i permessi per accedere alla vista richiesta
+  const adminOnlyViews = ['risorse', 'skills', 'bu', 'assegna'];
+  const isAdmin = document.body.classList.contains('user-admin');
+  
+  // Se l'utente non è admin e sta tentando di accedere a una vista riservata
+  if (adminOnlyViews.includes(viewId) && !isAdmin) {
+    logger.warning(`Accesso negato alla vista ${viewId} - utente non admin`);
+    // Reindirizza alla ricerca
+    viewId = 'ricerca';
+    showNotification('Accesso limitato: puoi accedere solo a Ricerca e Statistiche', 'warning');
+  }
+  
   views.forEach((view) => view.classList.add("hidden"));
   tabs.forEach((tab) => tab.classList.remove("active"));
 
@@ -282,23 +311,72 @@ function renderRicercaView() {
   const container = document.getElementById("view-ricerca");
   container.innerHTML = `
             <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-2xl font-semibold mb-6 flex items-center"><i data-lucide="search-check" class="mr-2 text-cyan-500"></i> Cerca Risorse per Competenze</h2>
-                <div class="grid md:grid-cols-3 gap-4 mb-6 p-4 border rounded-lg bg-gray-50">
-                    <div>
-                        <label for="search-skill-select" class="block text-sm font-medium text-gray-700">Competenza</label>
-                        <select id="search-skill-select" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-cyan-500 focus:border-transparent"></select>
+                <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                    <i data-lucide="search-check" class="mr-2 text-cyan-500"></i> 
+                    Cerca Risorse per Competenze
+                </h2>
+                
+                <!-- Pannello di filtro migliorato -->
+                <div class="bg-gradient-to-r from-cyan-50 to-blue-50 p-6 rounded-xl border border-cyan-200 mb-8">
+                    <div class="flex items-center mb-4">
+                        <i data-lucide="filter" class="w-5 h-5 mr-2 text-cyan-600"></i>
+                        <h3 class="text-lg font-semibold text-cyan-800">Filtri di Ricerca</h3>
                     </div>
-                    <div>
-                        <label for="search-level-slider" class="block text-sm font-medium text-gray-700">Livello Minimo: <span id="search-level-label" class="font-bold text-cyan-600">0</span></label>
-                        <input type="range" id="search-level-slider" min="0" max="10" value="0" class="mt-1 block w-full">
+                    
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <div class="space-y-2">
+                            <label for="search-skill-select" class="flex items-center text-sm font-medium text-gray-700">
+                                <i data-lucide="cpu" class="w-4 h-4 mr-2 text-cyan-600"></i>
+                                Competenza
+                            </label>
+                            <select id="search-skill-select" class="block w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white shadow-sm">
+                                <option value="">🔍 Tutte le competenze</option>
+                            </select>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <label for="search-level-slider" class="flex items-center text-sm font-medium text-gray-700">
+                                <i data-lucide="trending-up" class="w-4 h-4 mr-2 text-cyan-600"></i>
+                                Livello Minimo: 
+                                <span id="search-level-label" class="ml-2 px-2 py-1 bg-cyan-100 text-cyan-800 rounded-full text-xs font-bold">0</span>
+                            </label>
+                            <div class="relative">
+                                <input type="range" id="search-level-slider" min="0" max="10" value="0" 
+                                       class="block w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider">
+                                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>0</span>
+                                    <span>5</span>
+                                    <span>10</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <label for="search-bu-select" class="flex items-center text-sm font-medium text-gray-700">
+                                <i data-lucide="building" class="w-4 h-4 mr-2 text-cyan-600"></i>
+                                Business Unit
+                            </label>
+                            <select id="search-bu-select" class="block w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white shadow-sm">
+                                <option value="">🏢 Tutte le Business Unit</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label for="search-bu-select" class="block text-sm font-medium text-gray-700">Business Unit</label>
-                        <select id="search-bu-select" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
-                            <option value="">Tutte</option>
-                        </select>
+                    
+                    <!-- Indicatore risultati -->
+                    <div class="mt-4 p-3 bg-white rounded-lg border border-cyan-200">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center text-sm text-gray-600">
+                                <i data-lucide="users" class="w-4 h-4 mr-2"></i>
+                                <span id="search-results-count">Pronto per la ricerca</span>
+                            </div>
+                            <button id="clear-filters-btn" class="text-xs text-cyan-600 hover:text-cyan-800 flex items-center">
+                                <i data-lucide="refresh-cw" class="w-3 h-3 mr-1"></i>
+                                Azzera filtri
+                            </button>
+                        </div>
                     </div>
                 </div>
+                
                 <div id="search-results-container"></div>
             </div>`;
 
@@ -317,6 +395,17 @@ function renderRicercaView() {
   container
     .querySelector("#search-bu-select")
     .addEventListener("change", handleSearch);
+  
+  // Aggiungi evento per il pulsante azzera filtri
+  container
+    .querySelector("#clear-filters-btn")
+    .addEventListener("click", () => {
+      document.getElementById("search-skill-select").value = "";
+      document.getElementById("search-level-slider").value = "0";
+      document.getElementById("search-bu-select").value = "";
+      container.querySelector("#search-level-label").textContent = "0";
+      handleSearch();
+    });
 
   updateSearchSkillSelector();
   updateBuSelectors();
@@ -689,6 +778,8 @@ async function handleSearch() {
   const minLevel = document.getElementById("search-level-slider").value;
   const bu = document.getElementById("search-bu-select").value;
   const container = document.getElementById("search-results-container");
+  const resultsCounter = document.getElementById("search-results-count");
+  
   const [resources, allSkills] = await Promise.all([
     api.getResources(),
     api.getSkills(),
@@ -704,50 +795,131 @@ async function handleSearch() {
     return buMatch && skillMatch;
   });
 
+  // Aggiorna il contatore dei risultati
+  if (resultsCounter) {
+    const totalResources = resources.length;
+    const foundResources = filteredResources.length;
+    resultsCounter.innerHTML = `
+      <i data-lucide="users" class="w-4 h-4 mr-2"></i>
+      Trovate <strong>${foundResources}</strong> di <strong>${totalResources}</strong> risorse
+    `;
+    lucide.createIcons();
+  }
+
   container.innerHTML = "";
   if (filteredResources.length === 0) {
-    container.innerHTML = `<div class="text-center py-12 text-gray-500"><i data-lucide="search-x" class="mx-auto h-12 w-12"></i><p class="mt-2">Nessun risultato trovato.</p></div>`;
+    container.innerHTML = `
+      <div class="text-center py-16 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+        <i data-lucide="search-x" class="mx-auto h-16 w-16 mb-4 text-gray-400"></i>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">Nessun risultato trovato</h3>
+        <p class="text-sm">Prova a modificare i filtri di ricerca per trovare più risultati.</p>
+      </div>
+    `;
     lucide.createIcons();
     return;
   }
 
   const resultsList = document.createElement("div");
-  resultsList.className = "space-y-4";
+  resultsList.className = "space-y-6";
   filteredResources.forEach((res) => {
     const card = document.createElement("div");
-    card.className = "p-4 border rounded-lg bg-white shadow-sm";
+    card.className = "p-6 border rounded-lg bg-white shadow-md hover:shadow-lg transition-shadow duration-200 search-result-card";
+    
     let skillsHtml = res.skills
       .map((s) => {
         const skillInfo = allSkills.find((as) => as.id === s.skill_id);
         const skillName = skillInfo?.name || "N/D";
-        // Display labels without the delete button (as requested)
+        
+        // Crea le label associate alla skill con stile più elegante
         const skillLabelsHtml = s.labels && s.labels.length > 0
-            ? s.labels.map(label => `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-2 mb-1">${label}</span>`).join('')
-            : '';
-        return `
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-purple-100 text-purple-800 mr-2 mb-1">
-                    ${skillName} (Livello: ${s.level})
+            ? s.labels.map(label => `
+                <span class="skill-label inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-md mr-1">
+                    <i data-lucide="tag" class="w-3 h-3 mr-1"></i>
+                    ${label}
                 </span>
-                <div class="mt-1 flex flex-wrap">${skillLabelsHtml}</div>
-                `;
+              `).join('')
+            : '';
+        
+        // Determina il colore della bubble in base al livello
+        let levelColor = 'bg-gray-100 text-gray-800 border-gray-200';
+        if (s.level >= 8) levelColor = 'bg-green-100 text-green-800 border-green-200';
+        else if (s.level >= 6) levelColor = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        else if (s.level >= 4) levelColor = 'bg-orange-100 text-orange-800 border-orange-200';
+        else if (s.level >= 1) levelColor = 'bg-red-100 text-red-800 border-red-200';
+
+        return `
+          <div class="skill-container bg-gray-50 p-3 rounded-lg border mb-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold ${levelColor} border">
+                <i data-lucide="cpu" class="w-4 h-4 mr-2"></i>
+                ${skillName}
+                <span class="ml-2 px-2 py-0.5 bg-white bg-opacity-50 rounded-full text-xs">
+                  Liv. ${s.level}/10
+                </span>
+              </span>
+            </div>
+            ${skillLabelsHtml ? `
+              <div class="flex flex-wrap gap-1 mt-2">
+                ${skillLabelsHtml}
+              </div>
+            ` : `
+              <div class="text-xs text-gray-500 italic mt-2">
+                <i data-lucide="info" class="w-3 h-3 inline mr-1"></i>
+                Nessuna label associata
+              </div>
+            `}
+          </div>
+        `;
       })
       .join("");
 
     if (res.skills.length === 0) {
-      skillsHtml = '<span class="text-gray-500 text-sm">Nessuna skill assegnata.</span>';
+      skillsHtml = `
+        <div class="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+          <i data-lucide="file-x" class="w-8 h-8 mx-auto mb-2"></i>
+          <p class="text-sm">Nessuna competenza assegnata</p>
+        </div>
+      `;
     }
 
     card.innerHTML = `
-            <h3 class="text-lg font-semibold text-blue-700">${res.nome} ${res.cognome}</h3>
-            <p class="text-sm text-gray-600"><strong>Email:</strong> ${res.email}</p>
-            <p class="text-sm text-gray-600"><strong>Business Unit:</strong> ${res.business_unit.name}</p>
-            <div class="mt-3">
-                <p class="font-medium text-gray-700">Competenze:</p>
-                <div class="mt-1 flex flex-wrap gap-2">
-                    ${skillsHtml}
-                </div>
-            </div>
-        `;
+      <div class="flex items-start justify-between mb-4">
+        <div class="flex items-center">
+          <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
+            ${res.nome.charAt(0)}${res.cognome.charAt(0)}
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-gray-900">${res.nome} ${res.cognome}</h3>
+            <p class="text-sm text-gray-600 flex items-center mt-1">
+              <i data-lucide="building" class="w-4 h-4 mr-1"></i>
+              ${res.business_unit.name}
+            </p>
+          </div>
+        </div>
+        <div class="text-right">
+          <p class="text-sm text-gray-600 flex items-center">
+            <i data-lucide="mail" class="w-4 h-4 mr-1"></i>
+            ${res.email}
+          </p>
+          <div class="mt-1 flex items-center text-xs text-gray-500">
+            <i data-lucide="award" class="w-3 h-3 mr-1"></i>
+            ${res.skills.length} competenz${res.skills.length === 1 ? 'a' : 'e'}
+          </div>
+        </div>
+      </div>
+      
+      <div class="border-t pt-4">
+        <div class="flex items-center mb-3">
+          <h4 class="font-semibold text-gray-800 flex items-center">
+            <i data-lucide="brain" class="w-5 h-5 mr-2 text-purple-600"></i>
+            Competenze & Labels
+          </h4>
+        </div>
+        <div class="space-y-2">
+          ${skillsHtml}
+        </div>
+      </div>
+    `;
     resultsList.appendChild(card);
   });
   container.appendChild(resultsList);
@@ -988,76 +1160,410 @@ async function loadStats() {
   }
 }
 
-// --- Theme Toggling Logic ---
-const themeToggleBtn = document.getElementById("theme-toggle");
-const body = document.body;
-
-function applySavedTheme() {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
-        body.setAttribute("data-theme", savedTheme);
-        // Refresh Lucide icons to ensure correct rendering of moon/sun based on theme
-        lucide.createIcons();
-    } else {
-        // Default to light theme if no preference is saved
-        body.setAttribute("data-theme", "light");
+// --- ADVANCED THEME MANAGEMENT ---
+const themeManager = {
+  // Chiavi per localStorage
+  THEME_KEY: 'theme-preference',
+  
+  // Possibili valori del tema
+  THEMES: {
+    LIGHT: 'light',
+    DARK: 'dark',
+    AUTO: 'auto'
+  },
+  
+  // Elementi DOM
+  themeToggleBtn: document.getElementById("theme-toggle"),
+  body: document.body,
+  
+  // Media query per rilevare le preferenze del sistema
+  darkModeMediaQuery: window.matchMedia('(prefers-color-scheme: dark)'),
+  
+  // Inizializza il sistema di tema
+  init() {
+    this.applySavedTheme();
+    this.setupEventListeners();
+    this.updateThemeToggleIcon();
+  },
+  
+  // Rileva il tema preferito del sistema
+  getSystemTheme() {
+    return this.darkModeMediaQuery.matches ? this.THEMES.DARK : this.THEMES.LIGHT;
+  },
+  
+  // Ottiene la preferenza salvata dall'utente
+  getSavedTheme() {
+    return localStorage.getItem(this.THEME_KEY) || this.THEMES.AUTO;
+  },
+  
+  // Determina quale tema applicare
+  getEffectiveTheme() {
+    const savedTheme = this.getSavedTheme();
+    
+    if (savedTheme === this.THEMES.AUTO) {
+      return this.getSystemTheme();
     }
-}
+    
+    return savedTheme;
+  },
+  
+  // Applica il tema al documento
+  applyTheme(theme) {
+    this.body.setAttribute("data-theme", theme);
+    this.updateThemeToggleIcon();
+    lucide.createIcons();
+    
+    // Dispatch custom event per notificare il cambio tema
+    window.dispatchEvent(new CustomEvent('themeChanged', { 
+      detail: { theme, savedPreference: this.getSavedTheme() }
+    }));
+  },
+  
+  // Applica il tema salvato o quello del sistema
+  applySavedTheme() {
+    const effectiveTheme = this.getEffectiveTheme();
+    this.applyTheme(effectiveTheme);
+  },
+  
+  // Cicla tra le opzioni di tema (light -> dark -> auto -> light...)
+  toggleTheme() {
+    const currentPreference = this.getSavedTheme();
+    let newPreference;
+    
+    switch (currentPreference) {
+      case this.THEMES.LIGHT:
+        newPreference = this.THEMES.DARK;
+        break;
+      case this.THEMES.DARK:
+        newPreference = this.THEMES.AUTO;
+        break;
+      case this.THEMES.AUTO:
+      default:
+        newPreference = this.THEMES.LIGHT;
+        break;
+    }
+    
+    localStorage.setItem(this.THEME_KEY, newPreference);
+    const effectiveTheme = this.getEffectiveTheme();
+    this.applyTheme(effectiveTheme);
+    
+    // Mostra notifica del cambio tema
+    this.showThemeNotification(newPreference, effectiveTheme);
+  },
+  
+  // Aggiorna l'icona del toggle in base al tema attuale
+  updateThemeToggleIcon() {
+    const currentTheme = this.body.getAttribute("data-theme");
+    const savedPreference = this.getSavedTheme();
+    
+    // Rimuovi tutte le icone esistenti
+    this.themeToggleBtn.innerHTML = '';
+    
+    let iconHtml = '';
+    let tooltipText = '';
+    
+    if (savedPreference === this.THEMES.AUTO) {
+      // Modalità automatica - mostra icona speciale
+      iconHtml = `
+        <div class="relative">
+          <i data-lucide="smartphone" class="w-6 h-6 text-purple-600"></i>
+          <div class="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full flex items-center justify-center">
+            <i data-lucide="${currentTheme === this.THEMES.DARK ? 'moon' : 'sun'}" class="w-2 h-2 text-white"></i>
+          </div>
+        </div>
+      `;
+      tooltipText = `Auto (${currentTheme === this.THEMES.DARK ? 'Scuro' : 'Chiaro'})`;
+    } else if (currentTheme === this.THEMES.DARK) {
+      iconHtml = '<i data-lucide="moon" class="w-6 h-6 text-blue-400"></i>';
+      tooltipText = 'Tema Scuro';
+    } else {
+      iconHtml = '<i data-lucide="sun" class="w-6 h-6 text-yellow-500"></i>';
+      tooltipText = 'Tema Chiaro';
+    }
+    
+    this.themeToggleBtn.innerHTML = `
+      <div class="group relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200" title="${tooltipText}">
+        ${iconHtml}
+        <div class="absolute bottom-full right-0 mb-2 hidden group-hover:block">
+          <div class="bg-gray-900 text-white text-xs rounded py-1 px-2 whitespace-nowrap">
+            ${tooltipText}
+            <div class="absolute top-full right-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    lucide.createIcons();
+  },
+  
+  // Mostra notifica del cambio tema
+  showThemeNotification(preference, effectiveTheme) {
+    let message = '';
+    
+    switch (preference) {
+      case this.THEMES.LIGHT:
+        message = '🌞 Tema impostato su Chiaro';
+        break;
+      case this.THEMES.DARK:
+        message = '🌙 Tema impostato su Scuro';
+        break;
+      case this.THEMES.AUTO:
+        message = `📱 Tema automatico (${effectiveTheme === this.THEMES.DARK ? 'Scuro' : 'Chiaro'})`;
+        break;
+    }
+    
+    // Usa la funzione di notifica esistente se disponibile
+    if (typeof showNotification === 'function') {
+      showNotification(message, 'success');
+    }
+  },
+  
+  // Configura gli event listener
+  setupEventListeners() {
+    // Click sul toggle button
+    if (this.themeToggleBtn) {
+      this.themeToggleBtn.addEventListener('click', () => this.toggleTheme());
+    }
+    
+    // Ascolta i cambi di preferenza del sistema
+    this.darkModeMediaQuery.addEventListener('change', (e) => {
+      // Solo se siamo in modalità auto
+      if (this.getSavedTheme() === this.THEMES.AUTO) {
+        const newTheme = e.matches ? this.THEMES.DARK : this.THEMES.LIGHT;
+        this.applyTheme(newTheme);
+        console.log(`Sistema cambiato a tema ${newTheme}`);
+      }
+    });
+    
+    // Tastiera shortcut per il toggle del tema (Ctrl+Shift+T)
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+        e.preventDefault();
+        this.toggleTheme();
+      }
+    });
+  }
+};
 
-function toggleTheme() {
-    const currentTheme = body.getAttribute("data-theme");
-    const newTheme = currentTheme === "light" ? "dark" : "light";
-    body.setAttribute("data-theme", newTheme);
-    localStorage.setItem("theme", newTheme);
-    lucide.createIcons(); // Re-render icons after theme change
-}
+// Retrocompatibilità con il codice esistente
+const themeToggleBtn = themeManager.themeToggleBtn;
+const body = themeManager.body;
+const applySavedTheme = () => themeManager.applySavedTheme();
+const toggleTheme = () => themeManager.toggleTheme();
 
 // Initial view load and theme application
 document.addEventListener("DOMContentLoaded", async () => {
+  logger.info('🚀 DOMContentLoaded - Inizializzazione app');
+  
   // Controlla l'autenticazione prima di inizializzare l'app
+  logger.info('🔐 Controllo autenticazione...');
   const isAuthenticated = await auth.checkAuth();
+  logger.info('🔐 Risultato autenticazione:', isAuthenticated);
+  
   if (!isAuthenticated) {
+    logger.warn('❌ Utente non autenticato - reindirizzamento al login');
     return; // L'utente sarà reindirizzato al login
   }
   
-  // Mostra informazioni utente se disponibili
-  const userInfo = auth.getUserInfo();
-  if (userInfo) {
-    console.log('Utente autenticato:', userInfo.email);
-    // Potresti voler mostrare il nome utente nell'interfaccia
-    showUserInfo(userInfo);
+  // Inizializza il sistema di gestione tema avanzato
+  logger.info('🎨 Inizializzazione tema...');
+  themeManager.init();
+  
+  // Mostra informazioni utente se disponibili e determina la vista di default
+  let userInfo = auth.getUserInfo();
+  logger.info('👤 Info utente dal localStorage:', userInfo);
+  
+  // Se non abbiamo info utente ma siamo autenticati, proviamo a recuperarle
+  if (!userInfo && isAuthenticated) {
+    logger.info('🔄 Tentativo di recupero info utente dal server...');
+    try {
+      const response = await fetch('/auth/userinfo', {
+        headers: {
+          'Authorization': `Bearer ${auth.getToken()}`
+        }
+      });
+      if (response.ok) {
+        userInfo = await response.json();
+        logger.info('✅ Info utente recuperate dal server:', userInfo);
+        // Salva nel localStorage per il futuro
+        localStorage.setItem('user_info', JSON.stringify(userInfo));
+      } else {
+        logger.warn('❌ Impossibile recuperare info utente dal server');
+      }
+    } catch (error) {
+      logger.error('❌ Errore nel recupero info utente:', error);
+    }
   }
   
-  applySavedTheme(); // Apply theme before switching view to prevent flash
-  switchView("risorse");
+  let defaultView = "ricerca"; // Default per utenti non autenticati o non admin
+  
+  if (userInfo) {
+    logger.info('✅ Utente autenticato:', userInfo.email);
+    logger.info('📋 Gruppi utente:', userInfo.groups);
+    logger.info('🎭 Ruoli utente:', userInfo.roles);
+    
+    // Mostra il nome utente nell'interfaccia e applica i permessi
+    logger.info('🖼️ Chiamata showUserInfo...');
+    showUserInfo(userInfo);
+    
+    // Aggiungi gestore logout
+    const logoutBtn = document.getElementById('logout-btn');
+    logger.info('🚪 Logout button trovato:', !!logoutBtn);
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        logger.info('🚪 Logout richiesto');
+        auth.logout();
+      });
+    }
+    
+    // Determina la vista iniziale in base ai permessi dell'utente
+    // Verifica direttamente i gruppi/ruoli per determinare se è admin
+    const adminGroups = ["admin", "administrators", "hr-admin", "skill-matrix-admin"];
+    const adminRoles = ["admin", "administrator", "hr-admin", "skill-matrix-admin"];
+    
+    let isAdmin = false;
+    if (userInfo.groups && Array.isArray(userInfo.groups)) {
+      isAdmin = userInfo.groups.some(group => adminGroups.includes(group.toLowerCase()));
+    }
+    if (!isAdmin && userInfo.roles && Array.isArray(userInfo.roles)) {
+      isAdmin = userInfo.roles.some(role => adminRoles.includes(role.toLowerCase()));
+    }
+    
+    defaultView = isAdmin ? "risorse" : "ricerca";
+    logger.info(`🎯 Vista di default per utente ${isAdmin ? 'admin' : 'normale'}:`, defaultView);
+  } else {
+    logger.warn('⚠️ Nessuna informazione utente trovata nel localStorage');
+  }
+  
+  logger.info('🔄 Passaggio alla vista:', defaultView);
+  switchView(defaultView);
 });
 
 // Funzione per mostrare le informazioni dell'utente nell'UI
 function showUserInfo(userInfo) {
-  // Aggiungi il nome utente nell'header se non esiste già
-  const header = document.querySelector('header');
-  let userDisplay = document.getElementById('user-display');
+  logger.info('🖼️ showUserInfo chiamata con:', userInfo);
   
-  if (!userDisplay) {
-    userDisplay = document.createElement('div');
-    userDisplay.id = 'user-display';
-    userDisplay.className = 'absolute top-0 left-0 p-4 text-sm text-gray-600';
-    userDisplay.innerHTML = `
-      <div class="flex items-center gap-2">
-        <i data-lucide="user" class="w-4 h-4"></i>
-        <span>${userInfo.name || userInfo.email}</span>
-        <button onclick="auth.logout()" class="ml-2 text-red-600 hover:text-red-800">
-          <i data-lucide="log-out" class="w-4 h-4"></i>
-        </button>
-      </div>
-    `;
-    header.appendChild(userDisplay);
+  const userInfoContainer = document.getElementById('user-info');
+  const userInitials = document.getElementById('user-initials');
+  const userName = document.getElementById('user-name');
+  const userEmail = document.getElementById('user-email');
+  const logoutBtn = document.getElementById('logout-btn');
+  
+  logger.info('🔍 Elementi DOM trovati:', {
+    userInfoContainer: !!userInfoContainer,
+    userInitials: !!userInitials,
+    userName: !!userName,
+    userEmail: !!userEmail,
+    logoutBtn: !!logoutBtn
+  });
+  
+  if (userInfoContainer && userInfo) {
+    // Mostra il container
+    logger.info('👁️ Rendendo visibile il container utente');
+    userInfoContainer.classList.remove('hidden');
+    userInfoContainer.classList.add('flex');
+    
+    // Estrai le iniziali dal nome/email
+    let initials = 'U';
+    if (userInfo.name) {
+      const nameParts = userInfo.name.split(' ');
+      initials = nameParts.map(part => part.charAt(0).toUpperCase()).join('').substring(0, 2);
+    } else if (userInfo.email) {
+      initials = userInfo.email.charAt(0).toUpperCase();
+    }
+    
+    logger.info('🏷️ Iniziali calcolate:', initials);
+    logger.info('👤 Nome utente:', userInfo.name || userInfo.email?.split('@')[0]);
+    logger.info('📧 Email utente:', userInfo.email);
+    
+    // Aggiorna i contenuti
+    if (userInitials) {
+      userInitials.textContent = initials;
+      logger.info('✅ Iniziali impostate');
+    }
+    if (userName) {
+      userName.textContent = userInfo.name || userInfo.email.split('@')[0];
+      logger.info('✅ Nome utente impostato');
+    }
+    if (userEmail) {
+      userEmail.textContent = userInfo.email;
+      logger.info('✅ Email utente impostata');
+    }
+    
+    // Verifica se l'utente è admin e aggiorna l'interfaccia
+    logger.info('🔐 Chiamata checkAndApplyUserPermissions...');
+    checkAndApplyUserPermissions(userInfo);
+    
+    // Configura il pulsante di logout
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        if (confirm('Sei sicuro di voler effettuare il logout?')) {
+          auth.logout();
+        }
+      });
+    }
     
     // Inizializza le icone Lucide per i nuovi elementi
     if (typeof lucide !== 'undefined') {
       lucide.createIcons();
     }
   }
+}
+
+// Funzione per verificare e applicare i permessi utente
+function checkAndApplyUserPermissions(userInfo) {
+  const body = document.body;
+  
+  // Lista dei gruppi e ruoli admin (lista estesa)
+  const adminGroups = ["admin", "administrators", "hr-admin", "skill-matrix-admin"];
+  const adminRoles = ["admin", "administrator", "hr-admin", "skill-matrix-admin"];
+  
+  // Verifica se l'utente è admin
+  let isAdmin = false;
+  
+  logger.debug('Verifica permessi per utente:', userInfo);
+  logger.debug('Gruppi utente:', userInfo.groups);
+  logger.debug('Ruoli utente:', userInfo.roles);
+  
+  if (userInfo.groups && Array.isArray(userInfo.groups)) {
+    isAdmin = userInfo.groups.some(group => adminGroups.includes(group.toLowerCase()));
+    logger.debug('Controllo gruppi admin:', isAdmin);
+  }
+  
+  if (!isAdmin && userInfo.roles && Array.isArray(userInfo.roles)) {
+    isAdmin = userInfo.roles.some(role => adminRoles.includes(role.toLowerCase()));
+    logger.debug('Controllo ruoli admin:', isAdmin);
+  }
+  
+  // Applica la classe CSS in base ai permessi
+  if (isAdmin) {
+    body.classList.add('user-admin');
+    logger.info('✅ Utente identificato come admin - accesso completo abilitato');
+  } else {
+    body.classList.remove('user-admin');
+    logger.info('⚠️ Utente non admin - accesso limitato a ricerca e statistiche');
+    
+    // Se l'utente non è admin e si trova in una vista riservata, 
+    // reindirizzalo alla ricerca
+    const currentView = getCurrentView();
+    const adminOnlyViews = ['risorse', 'skills', 'bu', 'assegna'];
+    
+    if (adminOnlyViews.includes(currentView)) {
+      logger.info('🔄 Reindirizzamento utente non-admin dalla vista riservata alla ricerca');
+      switchView('ricerca');
+    }
+  }
+}
+
+// Funzione helper per ottenere la vista corrente
+function getCurrentView() {
+  const activeTab = document.querySelector('.tab-button.active');
+  if (activeTab) {
+    const viewId = activeTab.id.replace('tab-', '');
+    return viewId;
+  }
+  return 'ricerca'; // default
 }
 
 // Modals event listeners (unchanged)

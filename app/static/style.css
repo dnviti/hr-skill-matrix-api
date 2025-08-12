@@ -15,6 +15,17 @@
   --code-bg-color: #f3f4f6;
   --code-text-color: #111827;
   --shadow-color: rgba(0, 0, 0, 0.05);
+  
+  /* Nuove variabili per migliorare il tema */
+  --header-text-color: #1f2937;
+  --button-primary-bg: #3b82f6;
+  --button-primary-text: #ffffff;
+  --button-secondary-bg: #f3f4f6;
+  --button-secondary-text: #374151;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+  --info-color: #3b82f6;
 }
 
 body {
@@ -25,41 +36,75 @@ body {
 
 /* Dark Theme */
 body[data-theme="dark"] {
-  --bg-color: #0f1117; /* sfondo principale */
-  --text-color: #f8f9fa; /* ✅ testo principale più leggibile */
-  --card-bg-color: #1a1c23; /* card/modali */
-  --border-color: #2d2f3a; /* bordi */
-  --input-border-color: #3c3f4c;
-  --input-focus-ring-color: #7ab0f7; /* accento blu soft */
-  --tab-inactive-color: #cbd5e1; /* ✅ tab inattive più chiare */
+  --bg-color: #0f0f23; /* sfondo principale più scuro e moderno */
+  --text-color: #f1f5f9; /* testo principale più contrastato */
+  --card-bg-color: #1e1e3f; /* card/modali con leggero tono violaceo */
+  --border-color: #2d2d5a; /* bordi più visibili */
+  --input-border-color: #404074;
+  --input-focus-ring-color: #60a5fa; /* accento blu più chiaro */
+  --tab-inactive-color: #cbd5e1; /* tab inattive più chiare */
   --tab-inactive-hover-border: #52525b;
-  --tab-inactive-hover-color: #ffffff; /* ✅ testo hover più visibile */
-  --modal-bg-color: #1f2027;
-  --modal-text-color: #f8f9fa; /* ✅ testo modali più leggibile */
-  --modal-border-color: #3a3a3a;
-  --code-bg-color: #2a2d3a;
+  --tab-inactive-hover-color: #ffffff; /* testo hover più visibile */
+  --modal-bg-color: #1e1e3f;
+  --modal-text-color: #f1f5f9; /* testo modali più leggibile */
+  --modal-border-color: #404074;
+  --code-bg-color: #262647;
   --code-text-color: #f5f5f5;
-  --shadow-color: rgba(0, 0, 0, 0.5);
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  
+  /* Nuove variabili per il tema scuro */
+  --header-text-color: #f1f5f9;
+  --button-primary-bg: #3b82f6;
+  --button-primary-text: #ffffff;
+  --button-secondary-bg: #374151;
+  --button-secondary-text: #f9fafb;
+  --success-color: #34d399;
+  --warning-color: #fbbf24;
+  --error-color: #f87171;
+  --info-color: #60a5fa;
 
-  .bg-white { background-color: var(--card-bg-color) !important; }
+  /* Miglioramenti globali per il tema scuro */
+  .bg-white { 
+    background-color: var(--card-bg-color) !important; 
+    color: var(--text-color) !important;
+  }
+  
+  .text-gray-900,
   .text-gray-800,
   .text-gray-700,
   .text-gray-600,
-  .text-gray-500 { color: var(--text-color) !important; }
+  .text-gray-500 { 
+    color: var(--text-color) !important; 
+  }
+  
+  .text-black {
+    color: var(--text-color) !important;
+  }
 
-  .border-gray-300 { border-color: var(--input-border-color) !important; }
+  .border-gray-300,
+  .border-gray-200 { 
+    border-color: var(--input-border-color) !important; 
+  }
+  
+  /* Focus states migliorati */
   .focus\:ring-blue-500:focus { --tw-ring-color: var(--input-focus-ring-color) !important; }
-  .focus\:ring-green-500:focus { --tw-ring-color: #81c784 !important; }
-  .focus\:ring-orange-500:focus { --tw-ring-color: #ffb74d !important; }
-  .focus\:ring-purple-500:focus { --tw-ring-color: #ba68c8 !important; }
-  .focus\:ring-cyan-500:focus { --tw-ring-color: #4dd0e1 !important; }
+  .focus\:ring-green-500:focus { --tw-ring-color: var(--success-color) !important; }
+  .focus\:ring-orange-500:focus { --tw-ring-color: var(--warning-color) !important; }
+  .focus\:ring-purple-500:focus { --tw-ring-color: #c084fc !important; }
+  .focus\:ring-cyan-500:focus { --tw-ring-color: #22d3ee !important; }
 
-  .shadow-md {
-    box-shadow: 0 6px 12px -2px var(--shadow-color) !important;
+  /* Shadows migliorati */
+  .shadow-md,
+  .shadow-sm,
+  .shadow-lg {
+    box-shadow: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -1px rgba(0, 0, 0, 0.1) !important;
   }
 
   .bg-gray-100,
-  .bg-gray-50 { background-color: var(--border-color) !important; }
+  .bg-gray-50 { 
+    background-color: var(--border-color) !important; 
+    color: var(--text-color) !important;
+  }
 
   .border-gray-200,
   .border-b,
@@ -67,16 +112,27 @@ body[data-theme="dark"] {
     border-color: var(--border-color) !important;
   }
 
+  /* Tab styling migliorato */
   .tab-button:not(.active) {
     color: var(--tab-inactive-color) !important;
+    background-color: transparent !important;
   }
+  
   .tab-button:not(.active):hover {
     border-color: var(--tab-inactive-hover-border) !important;
     color: var(--tab-inactive-hover-color) !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+  }
+  
+  .tab-button.active {
+    color: var(--info-color) !important;
+    border-color: var(--info-color) !important;
+    background-color: rgba(59, 130, 246, 0.1) !important;
   }
 
+  /* Modal styling migliorato */
   .modal-backdrop {
-    background-color: rgba(0, 0, 0, 0.7) !important;
+    background-color: rgba(0, 0, 0, 0.8) !important;
   }
 
   #notification-modal .bg-white,
@@ -85,16 +141,42 @@ body[data-theme="dark"] {
   #bu-delete-modal .bg-white {
     background-color: var(--modal-bg-color) !important;
     color: var(--modal-text-color) !important;
-  }
-
-  #confirm-delete-modal .bg-white,
-  #bu-delete-modal .bg-white {
-    border: 1px solid var(--modal-border-color);
+    border: 1px solid var(--modal-border-color) !important;
   }
 
   #confirm-delete-message,
   #bu-delete-modal p {
     color: var(--modal-text-color) !important;
+  }
+
+  /* Input e form styling */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="range"],
+  select,
+  textarea {
+    background-color: var(--card-bg-color) !important;
+    color: var(--text-color) !important;
+    border-color: var(--input-border-color) !important;
+  }
+  
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="tel"]:focus,
+  select:focus,
+  textarea:focus {
+    border-color: var(--input-focus-ring-color) !important;
+    background-color: var(--card-bg-color) !important;
+  }
+
+  /* Header migliorato */
+  header h1 {
+    color: var(--header-text-color) !important;
+  }
+  
+  header p {
+    color: var(--tab-inactive-color) !important;
   }
 
   #bu-delete-modal .border.rounded-md {
@@ -153,4 +235,467 @@ input[type="range"]::-moz-range-thumb {
 /* Modal animazione */
 .modal-backdrop {
   animation: fadeIn 0.3s ease-out;
+}
+
+/* Stili personalizzati per la sezione ricerca competenze */
+.skill-container {
+  transition: all 0.2s ease-in-out;
+}
+
+.skill-container:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Animazioni per le cards dei risultati di ricerca */
+.search-result-card {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stili per le label delle skill */
+.skill-label {
+  transition: all 0.2s ease-in-out;
+}
+
+.skill-label:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Miglioramenti per il tema scuro nelle nuove sezioni */
+body[data-theme="dark"] .skill-container {
+  background-color: var(--border-color) !important;
+  border-color: var(--input-border-color) !important;
+}
+
+body[data-theme="dark"] .skill-container .bg-gray-50 {
+  background-color: var(--border-color) !important;
+}
+
+body[data-theme="dark"] .skill-container .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+body[data-theme="dark"] .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+body[data-theme="dark"] .text-blue-700 {
+  color: #7ab0f7 !important;
+}
+
+body[data-theme="dark"] .border-blue-200 {
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Stili per il slider personalizzato */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(to right, #06b6d4 0%, #06b6d4 0%, #e5e7eb 0%, #e5e7eb 100%);
+  outline: none;
+  border-radius: 15px;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #06b6d4;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease-in-out;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  background: #0891b2;
+}
+
+.slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #06b6d4;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease-in-out;
+}
+
+/* Animazioni per hover sui filtri */
+.filter-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Tema scuro per i nuovi elementi */
+body[data-theme="dark"] .bg-gradient-to-r.from-cyan-50.to-blue-50 {
+  background: linear-gradient(to right, rgba(6, 182, 212, 0.1), rgba(59, 130, 246, 0.1)) !important;
+}
+
+body[data-theme="dark"] .border-cyan-200 {
+  border-color: rgba(6, 182, 212, 0.3) !important;
+}
+
+body[data-theme="dark"] .text-cyan-800 {
+  color: #7dd3fc !important;
+}
+
+body[data-theme="dark"] .text-cyan-600 {
+  color: #06b6d4 !important;
+}
+
+body[data-theme="dark"] .bg-cyan-100 {
+  background-color: rgba(6, 182, 212, 0.2) !important;
+}
+
+/* Transizioni smooth per il cambio tema */
+body,
+.bg-white,
+.border,
+.shadow-md,
+.tab-button {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Miglioramenti per il pulsante theme toggle */
+#theme-toggle {
+  transition: all 0.3s ease;
+}
+
+#theme-toggle:hover {
+  transform: scale(1.05);
+}
+
+/* Stili specifici per il tooltip del theme toggle in tema scuro */
+body[data-theme="dark"] #theme-toggle .group-hover\:block {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+body[data-theme="dark"] #theme-toggle .border-t-gray-900 {
+  border-top-color: var(--card-bg-color) !important;
+}
+
+/* Miglioramenti per gli elementi delle notifiche nel tema scuro */
+body[data-theme="dark"] .bg-green-100 {
+  background-color: rgba(52, 211, 153, 0.2) !important;
+}
+
+body[data-theme="dark"] .bg-red-100 {
+  background-color: rgba(248, 113, 113, 0.2) !important;
+}
+
+body[data-theme="dark"] .text-green-600 {
+  color: var(--success-color) !important;
+}
+
+body[data-theme="dark"] .text-red-600 {
+  color: var(--error-color) !important;
+}
+
+/* Miglioramenti per le gradient del tema scuro */
+body[data-theme="dark"] .bg-gradient-to-r {
+  background: linear-gradient(to right, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1)) !important;
+}
+
+/* Stili per gli elementi specifici della ricerca nel tema scuro */
+body[data-theme="dark"] .skill-container {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: var(--border-color) !important;
+}
+
+body[data-theme="dark"] .skill-container:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* MIGLIORAMENTI SPECIFICI PER LEGGIBILITÀ TEMA SCURO */
+
+/* Colori dei testi più contrastati */
+body[data-theme="dark"] .text-blue-700 {
+  color: #93c5fd !important; /* blu più chiaro e contrastato */
+}
+
+body[data-theme="dark"] .text-blue-800 {
+  color: #dbeafe !important; /* blu ancora più chiaro */
+}
+
+body[data-theme="dark"] .text-blue-600 {
+  color: #60a5fa !important; /* blu medio contrastato */
+}
+
+body[data-theme="dark"] .text-gray-400 {
+  color: #9ca3af !important; /* grigio più chiaro */
+}
+
+body[data-theme="dark"] .text-gray-500 {
+  color: #d1d5db !important; /* grigio molto più chiaro */
+}
+
+body[data-theme="dark"] .text-gray-600 {
+  color: #e5e7eb !important; /* grigio quasi bianco */
+}
+
+/* Miglioramenti per i colori delle label e bubble */
+body[data-theme="dark"] .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.15) !important; /* sfondo più visibile */
+}
+
+body[data-theme="dark"] .bg-blue-100 {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+body[data-theme="dark"] .border-blue-200 {
+  border-color: rgba(59, 130, 246, 0.4) !important; /* bordi più visibili */
+}
+
+/* Colori specifici per le skill bubble */
+body[data-theme="dark"] .bg-purple-100 {
+  background-color: rgba(139, 92, 246, 0.2) !important;
+}
+
+body[data-theme="dark"] .text-purple-800 {
+  color: #c4b5fd !important; /* viola molto più chiaro */
+}
+
+body[data-theme="dark"] .border-purple-200 {
+  border-color: rgba(139, 92, 246, 0.4) !important;
+}
+
+/* Miglioramenti per i livelli di competenza */
+body[data-theme="dark"] .bg-green-100 {
+  background-color: rgba(34, 197, 94, 0.2) !important;
+}
+
+body[data-theme="dark"] .text-green-800 {
+  color: #86efac !important; /* verde più chiaro */
+}
+
+body[data-theme="dark"] .border-green-200 {
+  border-color: rgba(34, 197, 94, 0.4) !important;
+}
+
+body[data-theme="dark"] .bg-yellow-100 {
+  background-color: rgba(234, 179, 8, 0.2) !important;
+}
+
+body[data-theme="dark"] .text-yellow-800 {
+  color: #fde047 !important; /* giallo più chiaro */
+}
+
+body[data-theme="dark"] .border-yellow-200 {
+  border-color: rgba(234, 179, 8, 0.4) !important;
+}
+
+body[data-theme="dark"] .bg-orange-100 {
+  background-color: rgba(249, 115, 22, 0.2) !important;
+}
+
+body[data-theme="dark"] .text-orange-800 {
+  color: #fed7aa !important; /* arancione più chiaro */
+}
+
+body[data-theme="dark"] .border-orange-200 {
+  border-color: rgba(249, 115, 22, 0.4) !important;
+}
+
+body[data-theme="dark"] .bg-red-100 {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+body[data-theme="dark"] .text-red-800 {
+  color: #fca5a5 !important; /* rosso più chiaro */
+}
+
+body[data-theme="dark"] .border-red-200 {
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Miglioramenti per i titoli e header */
+body[data-theme="dark"] .text-blue-600 {
+  color: #60a5fa !important;
+}
+
+body[data-theme="dark"] .text-purple-600 {
+  color: #a78bfa !important;
+}
+
+body[data-theme="dark"] .text-cyan-600 {
+  color: #22d3ee !important;
+}
+
+body[data-theme="dark"] .text-cyan-800 {
+  color: #67e8f9 !important; /* ciano più chiaro */
+}
+
+/* Miglioramenti per gli elementi interattivi */
+body[data-theme="dark"] .hover\:text-red-700:hover {
+  color: #f87171 !important;
+}
+
+body[data-theme="dark"] .hover\:text-blue-600:hover {
+  color: #93c5fd !important;
+}
+
+/* Miglioramenti per i placeholder e testi secondari */
+body[data-theme="dark"] input::placeholder,
+body[data-theme="dark"] textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+body[data-theme="dark"] .text-sm {
+  color: #d1d5db !important;
+}
+
+body[data-theme="dark"] .text-xs {
+  color: #e5e7eb !important;
+}
+
+/* Miglioramenti per i badge e indicatori */
+body[data-theme="dark"] .bg-white.bg-opacity-50 {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #f1f5f9 !important;
+}
+
+/* ULTERIORI MIGLIORAMENTI PER LEGGIBILITÀ COMPLETA */
+
+/* Miglioramenti per le label e i form */
+body[data-theme="dark"] .text-gray-700 {
+  color: #f3f4f6 !important; /* quasi bianco per le label */
+}
+
+body[data-theme="dark"] .font-medium {
+  color: #f1f5f9 !important; /* bianco per i testi importanti */
+}
+
+/* Miglioramenti per le icone colorate */
+body[data-theme="dark"] .text-blue-500 {
+  color: #60a5fa !important; /* blu più chiaro per le icone */
+}
+
+body[data-theme="dark"] .text-green-500 {
+  color: #34d399 !important;
+}
+
+body[data-theme="dark"] .text-orange-500 {
+  color: #fb923c !important;
+}
+
+body[data-theme="dark"] .text-purple-500 {
+  color: #a78bfa !important;
+}
+
+body[data-theme="dark"] .text-cyan-500 {
+  color: #22d3ee !important;
+}
+
+/* Miglioramenti per gli sfondi dei pulsanti */
+body[data-theme="dark"] .bg-blue-500 {
+  background-color: #3b82f6 !important; /* mantiene il blu standard */
+}
+
+body[data-theme="dark"] .hover\:bg-blue-600:hover {
+  background-color: #2563eb !important;
+}
+
+body[data-theme="dark"] .bg-green-500 {
+  background-color: #10b981 !important;
+}
+
+body[data-theme="dark"] .hover\:bg-green-600:hover {
+  background-color: #059669 !important;
+}
+
+/* Miglioramenti per le statistiche */
+body[data-theme="dark"] .text-4xl {
+  color: var(--text-color) !important;
+}
+
+/* Miglioramenti specifici per tabelle */
+body[data-theme="dark"] table th {
+  color: var(--text-color) !important;
+  background-color: var(--border-color) !important;
+}
+
+body[data-theme="dark"] table td {
+  color: var(--text-color) !important;
+}
+
+/* Miglioramenti per i placeholder e stati vuoti */
+body[data-theme="dark"] .text-center.py-4.text-gray-500,
+body[data-theme="dark"] .text-center.py-12.text-gray-500 {
+  color: #9ca3af !important;
+}
+
+/* Miglioramenti per i gradienti nel tema scuro */
+body[data-theme="dark"] .bg-gradient-to-r.from-blue-500.to-purple-600 {
+  background: linear-gradient(to right, #3b82f6, #8b5cf6) !important;
+}
+
+/* Miglioramenti per gli slider e controlli */
+body[data-theme="dark"] .bg-gray-200 {
+  background-color: var(--input-border-color) !important;
+}
+
+/* Assicura che i testi bianchi rimangano bianchi */
+body[data-theme="dark"] .text-white {
+  color: #ffffff !important;
+}
+
+/* Miglioramenti per le ombre e i bordi degli elementi flottanti */
+body[data-theme="dark"] .rounded-full {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Miglioramenti specifici per i tooltip e i dropdown */
+body[data-theme="dark"] .group-hover\:block {
+  background-color: var(--modal-bg-color) !important;
+  color: var(--modal-text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* Contrasto migliorato per elementi interattivi */
+body[data-theme="dark"] button:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Miglioramenti per le notifiche e alert */
+body[data-theme="dark"] .bg-yellow-100 {
+  background-color: rgba(234, 179, 8, 0.25) !important;
+}
+
+body[data-theme="dark"] .text-yellow-700 {
+  color: #fbbf24 !important;
+}
+
+/* Assicura che tutti i link siano visibili */
+body[data-theme="dark"] a {
+  color: #60a5fa !important;
+}
+
+body[data-theme="dark"] a:hover {
+  color: #93c5fd !important;
+}
+
+/* CONTROLLO ACCESSO ADMIN */
+/* Nascondi gli elementi admin-only per utenti non admin */
+body:not(.user-admin) .admin-only {
+  display: none !important;
 }
