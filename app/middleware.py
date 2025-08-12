@@ -3,9 +3,13 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 import re
+import logging
 from typing import List
 from urllib.parse import urlencode
 from .auth import auth_service
+
+# Logger per il middleware
+logger = logging.getLogger("skill-matrix.middleware")
 
 
 class GlobalAuthMiddleware(BaseHTTPMiddleware):
@@ -58,28 +62,27 @@ class GlobalAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         """Middleware che controlla l'autenticazione per ogni richiesta"""
         
-        print(f"Middleware: {request.method} {request.url.path}")
-        print(f"Headers: Authorization={'presente' if request.headers.get('authorization') else 'assente'}, Accept={request.headers.get('accept', 'none')}")
+        # Log solo per debug, non per ogni richiesta in produzione
+        logger.debug(f"{request.method} {request.url.path}")
         
         # Se l'autenticazione OIDC è disabilitata, lascia passare tutto
         if not auth_service.config.oidc_enabled:
-            print("OIDC disabilitato, passthrough")
+            logger.debug("OIDC disabilitato, passthrough")
             return await call_next(request)
         
         # Controlla se il percorso è pubblico
         if self.is_public_path(request.url.path):
-            print(f"Percorso pubblico: {request.url.path}")
+            logger.debug(f"Percorso pubblico: {request.url.path}")
             return await call_next(request)
         
-        print(f"Percorso protetto, richiede autenticazione")
-        print(f"API request: {self.is_api_request(request)}")
+        logger.debug(f"Percorso protetto, richiede autenticazione")
         
         # Per tutti gli altri percorsi, richiedi autenticazione
         try:
             # Estrai il token dall'header Authorization
             authorization = request.headers.get("Authorization")
             if not authorization or not authorization.startswith("Bearer "):
-                print(f"Token mancante o malformato: {authorization}")
+                logger.debug(f"Token mancante o malformato")
                 # Nessun token - decide se fare redirect o restituire JSON
                 if self.is_api_request(request):
                     # Richiesta API - restituisci JSON
@@ -105,10 +108,10 @@ class GlobalAuthMiddleware(BaseHTTPMiddleware):
             # Estrai il token
             token = authorization.split(" ", 1)[1]
             
-            print(f"Token estratto, verifica in corso...")
+            logger.debug("Verifica token in corso...")
             # Verifica il token
             user_info = await auth_service.verify_token(token)
-            print(f"Token verificato per utente: {user_info.email}")
+            logger.info(f"Utente autenticato: {user_info.email}")
             
             # Aggiungi le informazioni dell'utente alla richiesta per uso nei router
             request.state.current_user = user_info
@@ -117,7 +120,7 @@ class GlobalAuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
             
         except HTTPException as e:
-            print(f"HTTPException nel middleware: {e.status_code} - {e.detail}")
+            logger.warning(f"HTTPException: {e.status_code} - {e.detail}")
             # Se c'è un errore di autenticazione
             if self.is_api_request(request):
                 # Richiesta API - restituisci JSON
@@ -135,11 +138,8 @@ class GlobalAuthMiddleware(BaseHTTPMiddleware):
                 return RedirectResponse(url="/auth/login", status_code=status.HTTP_302_FOUND)
                 
         except Exception as e:
-            print(f"Errore generico nel middleware: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Errore del middleware di autenticazione: {str(e)}")
             # Errore generico
-            print(f"Authentication middleware error: {str(e)}")
             if self.is_api_request(request):
                 return JSONResponse(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

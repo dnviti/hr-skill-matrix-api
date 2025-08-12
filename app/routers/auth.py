@@ -2,8 +2,14 @@ from fastapi import APIRouter, Request, HTTPException, status, Depends
 from fastapi.responses import RedirectResponse, JSONResponse, Response
 from typing import Dict, Any
 import httpx
+import logging
 from urllib.parse import urlencode
 from ..auth import auth_service, UserInfo, get_current_user
+from pydantic import BaseModel
+from typing import Optional
+
+# Logger per il router di autenticazione
+logger = logging.getLogger("skill-matrix.auth")
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -37,8 +43,8 @@ async def login(redirect_uri: str = None):
     
     auth_url = f"{auth_service.config.oidc_auth_url}?{urlencode(params)}"
     
-    print(f"🚀 Redirect a Authentik: {auth_url}")
-    print(f"🔍 Authorization URL dal discovery: {auth_service.config.oidc_auth_url}")
+    logger.info(f"Redirect a provider OIDC")
+    logger.debug(f"Authorization URL: {auth_service.config.oidc_auth_url}")
     
     return RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
 
@@ -46,31 +52,31 @@ async def login(redirect_uri: str = None):
 @router.get("/callback")
 async def auth_callback(code: str = None, state: str = None, error: str = None):
     """Gestisce il callback di autenticazione da Authentik"""
-    print(f"Callback ricevuto - code: {'presente' if code else 'assente'}, state: {state}, error: {error}")
+    logger.debug(f"Callback - code: {'✓' if code else '✗'}, state: {state}, error: {error}")
     
     if not auth_service.config.oidc_enabled:
-        print("OIDC non abilitato")
+        logger.warning("OIDC non abilitato")
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"detail": "Autenticazione OIDC non abilitata"}
         )
     
     if error:
-        print(f"Errore da Authentik: {error}")
+        logger.error(f"Errore da provider OIDC: {error}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Errore di autenticazione: {error}"
         )
     
     if not code:
-        print("Codice di autorizzazione mancante")
+        logger.warning("Codice di autorizzazione mancante")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Codice di autorizzazione mancante"
         )
     
     try:
-        print("Inizio scambio code -> token...")
+        logger.debug("Scambio code -> token...")
         
         # Scambia il codice con un token
         token_data = {
@@ -81,7 +87,7 @@ async def auth_callback(code: str = None, state: str = None, error: str = None):
             "client_secret": auth_service.config.oidc_client_secret,
         }
         
-        print(f"Chiamando token endpoint: {auth_service.config.oidc_token_url}")
+        logger.debug(f"Chiamando token endpoint: {auth_service.config.oidc_token_url}")
         
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -130,61 +136,79 @@ async def auth_callback(code: str = None, state: str = None, error: str = None):
                 if custom_redirect.startswith("/") and not custom_redirect.startswith("//"):
                     redirect_url = custom_redirect
             
-            print(f"🔄 Creando pagina HTML di redirect verso: {redirect_url}")
+            logger.debug(f"Creando pagina HTML di redirect verso: {redirect_url}")
             
-            # Crea una pagina HTML che salva il token e fa redirect alla home
+            # Crea una pagina HTML che salva il token e fa redirect istantaneo alla home
             html_content = f"""
             <!DOCTYPE html>
             <html>
             <head>
                 <title>Login Completato</title>
-                <meta http-equiv="refresh" content="2;url={redirect_url}">
+                <meta http-equiv="refresh" content="0;url={redirect_url}">
+                <style>
+                    body {{
+                        margin: 0;
+                        padding: 0;
+                        background: #1a1a1a;
+                        color: #e0e0e0;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        opacity: 0;
+                        transition: opacity 0.3s ease;
+                    }}
+                    .container {{
+                        text-align: center;
+                        padding: 2rem;
+                    }}
+                    .spinner {{
+                        width: 24px;
+                        height: 24px;
+                        border: 2px solid #333;
+                        border-top: 2px solid #4f46e5;
+                        border-radius: 50%;
+                        animation: spin 1s linear infinite;
+                        margin: 1rem auto;
+                    }}
+                    @keyframes spin {{
+                        0% {{ transform: rotate(0deg); }}
+                        100% {{ transform: rotate(360deg); }}
+                    }}
+                    @media (prefers-color-scheme: light) {{
+                        body {{
+                            background: #f8f9fa;
+                            color: #333;
+                        }}
+                        .spinner {{
+                            border: 2px solid #e0e0e0;
+                            border-top: 2px solid #4f46e5;
+                        }}
+                    }}
+                </style>
                 <script>
-                    console.log('🔄 Callback page loaded');
-                    
                     // Salva il token nel localStorage
                     localStorage.setItem('access_token', '{access_token}');
                     localStorage.setItem('id_token', '{id_token}');
                     localStorage.setItem('user_info', JSON.stringify({user_info.dict()}));
                     
-                    console.log('✅ Token salvati nel localStorage');
-                    console.log('Login completato per:', '{user_info.email}');
-                    
-                    // Redirect immediato
-                    setTimeout(function() {{
-                        console.log('🔄 Redirecting to: {redirect_url}');
-                        window.location.replace('{redirect_url}');
-                    }}, 1500);
-                    
-                    // Backup redirect
+                    // Mostra la pagina con una fade-in soft
                     window.addEventListener('load', function() {{
-                        setTimeout(function() {{
-                            if (window.location.href.indexOf('callback') !== -1) {{
-                                console.log('🔄 Backup redirect executing...');
-                                window.location.href = '{redirect_url}';
-                            }}
-                        }}, 3000);
+                        document.body.style.opacity = '1';
                     }});
+                    
+                    // Redirect immediato ma soft
+                    setTimeout(function() {{
+                        window.location.replace('{redirect_url}');
+                    }}, 150);
                 </script>
             </head>
             <body>
-                <div style="text-align: center; margin-top: 100px; font-family: Arial, sans-serif;">
-                    <h2>🎉 Login completato!</h2>
-                    <p>Benvenuto/a <strong>{user_info.name or user_info.email}</strong></p>
-                    <p>Redirect alla home in corso...</p>
-                    <div style="margin-top: 20px;">
-                        <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    </div>
-                    <p style="margin-top: 20px; font-size: 12px; color: #666;">
-                        Se il redirect non funziona automaticamente, <a href="{redirect_url}" style="color: #3498db; text-decoration: none; font-weight: bold;">clicca qui per andare alla home</a>
-                    </p>
+                <div class="container">
+                    <p>Accesso completato...</p>
+                    <div class="spinner"></div>
                 </div>
-                <style>
-                    @keyframes spin {{
-                        0% {{ transform: rotate(0deg); }}
-                        100% {{ transform: rotate(360deg); }}
-                    }}
-                </style>
             </body>
             </html>
             """
@@ -214,26 +238,77 @@ async def get_user_info(current_user: UserInfo = Depends(get_current_user)):
     return current_user
 
 
-@router.get("/logout")
-async def logout():
-    """Gestisce il logout"""
+class LogoutRequest(BaseModel):
+    id_token_hint: Optional[str] = None
+
+@router.post("/logout")
+async def logout(request: Request, body: LogoutRequest):
+    """Gestisce il logout in modo sicuro, invalidando la sessione OIDC."""
     if not auth_service.config.oidc_enabled:
         return JSONResponse(content={"message": "Logout completato (modalità dev)"})
+
+    await auth_service.ensure_discovery_initialized()
     
-    # URL di logout di Authentik
-    logout_url = f"{auth_service.config.oidc_issuer.rstrip('/')}/end-session/"
-    
-    # Parametri per il logout
+    # L'URL di fine sessione standard OIDC
+    end_session_endpoint = auth_service.config.oidc_end_session_url
+    if not end_session_endpoint:
+        logger.error("L'endpoint di fine sessione non è definito nel discovery OIDC.")
+        return JSONResponse(status_code=500, content={"error": "Logout non configurato correttamente."})
+
+    # L'URL a cui l'utente sarà reindirizzato dopo il logout
+    # Deve essere registrato come "Post-logout Redirect URI" in Authentik
+    post_logout_redirect_uri = str(request.base_url)
+
     params = {
-        "post_logout_redirect_uri": auth_service.config.oidc_redirect_uri.replace("/auth/callback", "/"),
+        "id_token_hint": body.id_token_hint,
+        "post_logout_redirect_uri": post_logout_redirect_uri,
+        "client_id": auth_service.config.oidc_client_id, # Aggiunto per maggiore compatibilità
     }
     
-    logout_url_with_params = f"{logout_url}?{urlencode(params)}"
+    # Rimuovi parametri nulli
+    params = {k: v for k, v in params.items() if v is not None}
+
+    logout_url = f"{end_session_endpoint}?{urlencode(params)}"
+    
+    logger.info(f"Logout URL generato: {logout_url}")
     
     return JSONResponse(content={
         "message": "Logout in corso",
-        "logout_url": logout_url_with_params
+        "logout_url": logout_url
     })
+
+
+@router.get("/perform_logout")
+async def perform_logout(request: Request, id_token_hint: Optional[str] = None):
+    """
+    Questo endpoint costruisce l'URL di logout OIDC e reindirizza l'utente.
+    È un GET endpoint per semplificare il redirect dal frontend.
+    """
+    if not auth_service.config.oidc_enabled:
+        return RedirectResponse(url="/")
+
+    await auth_service.ensure_discovery_initialized()
+    
+    end_session_endpoint = auth_service.config.oidc_end_session_url
+    if not end_session_endpoint:
+        logger.error("L'endpoint di fine sessione non è definito nel discovery OIDC.")
+        return RedirectResponse(url="/?error=logout_not_configured")
+
+    post_logout_redirect_uri = str(request.base_url)
+
+    params = {
+        "id_token_hint": id_token_hint,
+        "post_logout_redirect_uri": post_logout_redirect_uri,
+        "client_id": auth_service.config.oidc_client_id,
+    }
+    
+    params = {k: v for k, v in params.items() if v is not None}
+
+    logout_url = f"{end_session_endpoint}?{urlencode(params)}"
+    
+    logger.info(f"Redirect per logout a: {logout_url}")
+    
+    return RedirectResponse(url=logout_url)
 
 
 @router.get("/config")

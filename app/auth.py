@@ -26,7 +26,7 @@ class AuthConfig:
         
         # URLs derivate dall'issuer
         if self.oidc_issuer:
-            self.oidc_discovery_url = f"{self.oidc_issuer.rstrip('/')}/.well-known/openid_configuration"
+            self.oidc_discovery_url = f"{self.oidc_issuer.rstrip('/')}/.well-known/openid-configuration"
             # URL di fallback basati su quello che sappiamo di Authentik
             # Authorization, token, userinfo sono senza il nome dell'app
             issuer_base = self.oidc_issuer.rstrip('/').replace('/skillmatrix', '')
@@ -35,6 +35,8 @@ class AuthConfig:
             self.oidc_userinfo_url = f"{issuer_base}/userinfo/"
             # JWKS invece è con il nome dell'app
             self.oidc_jwks_url = f"{self.oidc_issuer.rstrip('/')}/jwks/"
+            # End session URL (logout)
+            self.oidc_end_session_url = f"{issuer_base}/end-session/"
         
         # Cache per le chiavi pubbliche e discovery
         self._jwks_cache: Optional[Dict] = None
@@ -108,9 +110,18 @@ class AuthService:
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(self.config.oidc_discovery_url, timeout=10.0)
+                
+                if response.status_code != 200:
+                    # Fallback: usiamo URL fissi se il discovery fallisce
+                    print(f"⚠️ OIDC Discovery fallito (status {response.status_code}), usando configurazione di fallback")
+                    self.config.oidc_end_session_url = "https://authentik.dev.opslab.host/application/o/skillmatrix/end-session/"
+                    self._discovery_initialized = True
+                    return {}
+                    
                 response.raise_for_status()
                 
-                self.config._discovery_cache = response.json()
+                discovery_data = response.json()
+                self.config._discovery_cache = discovery_data
                 self.config._discovery_cache_expiry = now + timedelta(hours=1)
                 
                 # Aggiorna gli URL con quelli ottenuti dalla discovery
@@ -120,10 +131,28 @@ class AuthService:
                 self.config.oidc_userinfo_url = discovery.get("userinfo_endpoint", self.config.oidc_userinfo_url)
                 self.config.oidc_jwks_url = discovery.get("jwks_uri", self.config.oidc_jwks_url)
                 
+                # Per end_session_endpoint, se è relativo, lo rendiamo assoluto
+                end_session_from_discovery = discovery.get("end_session_endpoint")
+                
+                if end_session_from_discovery:
+                    if end_session_from_discovery.startswith("http"):
+                        # È già un URL assoluto
+                        self.config.oidc_end_session_url = end_session_from_discovery
+                    else:
+                        # È relativo, lo rendiamo assoluto usando l'issuer completo (CON skillmatrix)
+                        issuer_base = self.config.oidc_issuer.rstrip('/')
+                        # Rimuovi il leading slash se presente nell'endpoint discovery
+                        clean_endpoint = end_session_from_discovery.lstrip('/')
+                        self.config.oidc_end_session_url = f"{issuer_base}/{clean_endpoint}"
+                else:
+                    # Fallback se non c'è nel discovery - FORZIAMO quello giusto basato su quello che funziona
+                    self.config.oidc_end_session_url = "https://authentik.dev.opslab.host/application/o/skillmatrix/end-session/"
+                
                 print(f"OIDC Discovery completato:")
                 print(f"  Authorization URL: {self.config.oidc_auth_url}")
                 print(f"  Token URL: {self.config.oidc_token_url}")
                 print(f"  JWKS URL: {self.config.oidc_jwks_url}")
+                print(f"  End Session URL: {self.config.oidc_end_session_url}")
                 
                 return self.config._discovery_cache
                 

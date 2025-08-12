@@ -4,11 +4,29 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import os
+import logging
 from datetime import datetime
 from dotenv import load_dotenv
 
 # Carica le variabili d'ambiente
 load_dotenv()
+
+# Configurazione logging
+APP_ENV = os.getenv("APP_ENV", "dev")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO" if APP_ENV == "prod" else "DEBUG")
+
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL.upper()),
+    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s" if APP_ENV == "prod" 
+           else "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
+# Logger principale dell'applicazione
+logger = logging.getLogger("skill-matrix")
+
+# Riduce il logging di uvicorn per healthcheck
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 # 1. Importa i router delle API
 from .routers import resources, skills, business_units, auth
@@ -19,7 +37,6 @@ from .middleware import GlobalAuthMiddleware
 Base.metadata.create_all(bind=engine)
 
 # Inizializzazione condizionale dell'app
-APP_ENV = os.getenv("APP_ENV", "dev")
 fastapi_kwargs = {
     "title": "VarGroup Skill Matrix API",
     "description": "Backend unificato per la gestione delle competenze.",
@@ -101,8 +118,8 @@ def readiness_check():
             }
             
         except Exception as e:
-            # Log dell'errore ma non fallire immediatamente
-            print(f"Database check failed: {str(e)}")
+            # Log dell'errore solo per debug, non per healthcheck di routine
+            logger.debug(f"Database check failed: {str(e)}")
             db_status = f"error: {str(e)}"
             tables_info = None
         finally:
@@ -127,7 +144,7 @@ def readiness_check():
                 }
             )
     except Exception as e:
-        print(f"Readiness check failed: {str(e)}")
+        logger.error(f"Readiness check failed: {str(e)}")
         raise HTTPException(
             status_code=503,
             detail={
