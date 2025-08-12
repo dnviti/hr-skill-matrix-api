@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 from .. import crud, models
 from ..database import get_db
+from ..dependencies import get_current_user_from_request, get_current_admin_user_from_request
+from ..auth import UserInfo
 
 router = APIRouter(
     prefix="/api/skills",
@@ -11,7 +13,14 @@ router = APIRouter(
 )
 
 @router.post("", response_model=models.SkillSchema, status_code=201)
-def create_new_skill(skill: models.SkillCreate, db: Session = Depends(get_db)):
+def create_new_skill(
+    skill: models.SkillCreate, 
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    # Verifica che l'utente sia admin
+    current_user = get_current_admin_user_from_request(request)
+    
     db_skill = crud.get_skill_by_name(db, name=skill.name)
     if db_skill:
         raise HTTPException(status_code=400, detail="Skill with this name already registered")
@@ -24,7 +33,14 @@ def read_all_skills(skip: int = 0, limit: int = 100, db: Session = Depends(get_d
     return [models.SkillSchema.from_orm(s) for s in skills]
 
 @router.delete("/{skill_id}", status_code=204)
-def delete_single_skill(skill_id: int, db: Session = Depends(get_db)):
+def delete_single_skill(
+    skill_id: int, 
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    # Verifica che l'utente sia admin
+    current_user = get_current_admin_user_from_request(request)
+    
     db_skill = crud.delete_skill(db, skill_id=skill_id)
     if db_skill is None:
         raise HTTPException(status_code=404, detail="Skill not found")
@@ -35,9 +51,13 @@ def delete_single_skill(skill_id: int, db: Session = Depends(get_db)):
 def add_skill_label(
     skill_id: int,
     label_data: models.SkillLabelAdd,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """Aggiunge una label a una skill"""
+    # Verifica che l'utente sia admin
+    current_user = get_current_admin_user_from_request(request)
+    
     skill = crud.add_skill_label(db, skill_id, label_data.label)
     if not skill:
         raise HTTPException(status_code=404, detail="Skill not found")
@@ -47,9 +67,13 @@ def add_skill_label(
 def remove_skill_label(
     skill_id: int,
     label_data: models.SkillLabelRemove,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """Rimuove una label da una skill"""
+    # Verifica che l'utente sia admin
+    current_user = get_current_admin_user_from_request(request)
+    
     skill = crud.remove_skill_label(db, skill_id, label_data.label)
     if not skill:
         raise HTTPException(status_code=404, detail="Skill not found")

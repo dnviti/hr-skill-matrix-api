@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 from .. import crud, models
 from ..database import get_db
+from ..dependencies import get_current_user_from_request, get_current_admin_user_from_request
+from ..auth import UserInfo
 
 router = APIRouter(
     prefix="/api/business_units",
@@ -11,7 +13,14 @@ router = APIRouter(
 )
 
 @router.post("", response_model=models.BusinessUnitSchema, status_code=201)
-def create_bu(bu: models.BusinessUnitCreate, db: Session = Depends(get_db)):
+def create_bu(
+    bu: models.BusinessUnitCreate, 
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    # Verifica che l'utente sia admin
+    current_user = get_current_admin_user_from_request(request)
+    
     db_bu = crud.get_business_unit_by_name(db, name=bu.name)
     if db_bu:
         raise HTTPException(status_code=400, detail="Business Unit già esistente")
@@ -29,7 +38,15 @@ def read_bu(bu_id: int, db: Session = Depends(get_db)):
     return db_bu
 
 @router.delete("/{bu_id}", response_model=models.BusinessUnitSchema)
-def delete_bu(bu_id: int, options: models.BuDeleteOptions, db: Session = Depends(get_db)):
+def delete_bu(
+    bu_id: int, 
+    options: models.BuDeleteOptions, 
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    # Verifica che l'utente sia admin
+    current_user = get_current_admin_user_from_request(request)
+    
     try:
         deleted_bu = crud.delete_business_unit(db, bu_id=bu_id, options=options)
         if deleted_bu is None:

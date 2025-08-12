@@ -1,7 +1,61 @@
+// --- AUTHENTICATION LAYER ---
+const auth = {
+  getToken: () => localStorage.getItem('access_token'),
+  getUserInfo: () => {
+    const userInfo = localStorage.getItem('user_info');
+    return userInfo ? JSON.parse(userInfo) : null;
+  },
+  isAuthenticated: () => !!auth.getToken(),
+  logout: () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('id_token');
+    localStorage.removeItem('user_info');
+    window.location.href = '/auth/logout';
+  },
+  checkAuth: async () => {
+    // Controlla se l'autenticazione è abilitata
+    try {
+      const config = await fetch('/auth/config').then(r => r.json());
+      if (!config.oidc_enabled) {
+        return true; // Modalità dev
+      }
+      
+      if (!auth.isAuthenticated()) {
+        window.location.href = '/auth/login';
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Errore controllo autenticazione:', error);
+      return false;
+    }
+  }
+};
+
 // --- API ABSTRACTION LAYER ---
 const api = {
   fetchJSON: async (url, options = {}) => {
+    // Aggiungi il token di autenticazione se disponibile
+    const token = auth.getToken();
+    if (token) {
+      options.headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
     const response = await fetch(url, options);
+    
+    // Se non autenticato, redirect al login
+    if (response.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('id_token');
+      localStorage.removeItem('user_info');
+      window.location.href = '/auth/login';
+      return;
+    }
+    
     if (!response.ok) {
       const errorData = await response
         .json()
@@ -959,10 +1013,52 @@ function toggleTheme() {
 }
 
 // Initial view load and theme application
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  // Controlla l'autenticazione prima di inizializzare l'app
+  const isAuthenticated = await auth.checkAuth();
+  if (!isAuthenticated) {
+    return; // L'utente sarà reindirizzato al login
+  }
+  
+  // Mostra informazioni utente se disponibili
+  const userInfo = auth.getUserInfo();
+  if (userInfo) {
+    console.log('Utente autenticato:', userInfo.email);
+    // Potresti voler mostrare il nome utente nell'interfaccia
+    showUserInfo(userInfo);
+  }
+  
   applySavedTheme(); // Apply theme before switching view to prevent flash
   switchView("risorse");
 });
+
+// Funzione per mostrare le informazioni dell'utente nell'UI
+function showUserInfo(userInfo) {
+  // Aggiungi il nome utente nell'header se non esiste già
+  const header = document.querySelector('header');
+  let userDisplay = document.getElementById('user-display');
+  
+  if (!userDisplay) {
+    userDisplay = document.createElement('div');
+    userDisplay.id = 'user-display';
+    userDisplay.className = 'absolute top-0 left-0 p-4 text-sm text-gray-600';
+    userDisplay.innerHTML = `
+      <div class="flex items-center gap-2">
+        <i data-lucide="user" class="w-4 h-4"></i>
+        <span>${userInfo.name || userInfo.email}</span>
+        <button onclick="auth.logout()" class="ml-2 text-red-600 hover:text-red-800">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </button>
+      </div>
+    `;
+    header.appendChild(userDisplay);
+    
+    // Inizializza le icone Lucide per i nuovi elementi
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+}
 
 // Modals event listeners (unchanged)
 document.getElementById("cancel-delete-btn").addEventListener("click", closeModals);
