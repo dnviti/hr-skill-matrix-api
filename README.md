@@ -11,6 +11,8 @@ Questo progetto fornisce un backend unificato per la gestione delle competenze, 
   * **Ricerca Avanzata**: Filtra le risorse in base a competenze, livello e business unit.
   * **Statistiche**: Visualizza dati aggregati come le competenze più diffuse e la distribuzione delle risorse.
   * **Frontend Integrato**: Una Single Page Application (SPA) per interagire con l'API.
+  * **Autenticazione OIDC**: Integrazione con Authentik per autenticazione OpenID Connect.
+  * **Autorizzazione basata su ruoli**: Controllo degli accessi con ruoli utente e amministratore.
   * **Containerizzazione Docker**: Semplifica il deployment sia in sviluppo che in produzione.
   * **CI/CD con GitHub Actions**: Build e push automatici dell'immagine Docker.
 
@@ -24,6 +26,12 @@ Questo progetto fornisce un backend unificato per la gestione delle competenze, 
       * SQLAlchemy
       * Uvicorn
       * Pydantic
+      * Authlib (OIDC)
+      * Python-JOSE (JWT)
+  * **Autenticazione**:
+      * OpenID Connect (OIDC)
+      * Authentik
+      * JSON Web Tokens (JWT)
   * **Database**:
       * SQLite (per sviluppo)
       * MariaDB (per produzione)
@@ -56,11 +64,15 @@ Questo progetto fornisce un backend unificato per la gestione delle competenze, 
 
 2.  **Crea i file di ambiente**:
 
+      * Copia il file di esempio: `cp .env.example .env`
       * Crea un file chiamato `.env.dev` per lo sviluppo:
 
         ```env
         APP_ENV=dev
         DATABASE_URL=sqlite:///./data/skill_matrix_dev.db
+        
+        # Autenticazione (modalità sviluppo)
+        OIDC_ENABLED=false
         ```
 
       * Crea un file chiamato `.env.prod` per la produzione. Sostituisci i valori con password sicure:
@@ -72,6 +84,13 @@ Questo progetto fornisce un backend unificato per la gestione delle competenze, 
         DB_DATABASE=skill_matrix
         DB_USER=user
         DB_PASSWORD=password
+        
+        # Autenticazione OIDC (produzione)
+        OIDC_ENABLED=true
+        OIDC_ISSUER=https://auth.yourcompany.com/application/o/hr-skill-matrix/
+        OIDC_CLIENT_ID=hr-skill-matrix
+        OIDC_CLIENT_SECRET=your-client-secret
+        OIDC_REDIRECT_URI=https://hr-skills.yourcompany.com/auth/callback
         ```
 
 -----
@@ -128,7 +147,32 @@ Il progetto è configurato per la Continuous Integration/Continuous Deployment (
 
 -----
 
-## 📁 Struttura del Progetto
+## � Autenticazione
+
+L'applicazione supporta l'autenticazione OpenID Connect (OIDC) tramite Authentik. Per configurare l'autenticazione:
+
+1. **Per lo sviluppo**: Mantieni `OIDC_ENABLED=false` per utilizzare un utente fittizio
+2. **Per la produzione**: Configura Authentik e imposta `OIDC_ENABLED=true`
+
+### Configurazione rapida per lo sviluppo:
+```env
+OIDC_ENABLED=false
+```
+
+### Configurazione per la produzione:
+```env
+OIDC_ENABLED=true
+OIDC_ISSUER=https://auth.yourcompany.com/application/o/hr-skill-matrix/
+OIDC_CLIENT_ID=hr-skill-matrix
+OIDC_CLIENT_SECRET=your-client-secret
+OIDC_REDIRECT_URI=https://hr-skills.yourcompany.com/auth/callback
+```
+
+**📋 Per una guida completa alla configurazione dell'autenticazione, consulta [AUTHENTICATION.md](./AUTHENTICATION.md)**
+
+-----
+
+## �📁 Struttura del Progetto
 
 ```
 .
@@ -136,6 +180,7 @@ Il progetto è configurato per la Continuous Integration/Continuous Deployment (
 │   └── docker-build.yml
 ├── app/
 │   ├── routers/            # Moduli delle API (endpoints)
+│   │   ├── auth.py         # Endpoints di autenticazione OIDC
 │   │   ├── business_units.py
 │   │   ├── resources.py
 │   │   └── skills.py
@@ -143,15 +188,19 @@ Il progetto è configurato per la Continuous Integration/Continuous Deployment (
 │   │   ├── index.html
 │   │   ├── style.css
 │   │   └── main.js
+│   ├── auth.py             # Servizio di autenticazione OIDC
 │   ├── __init__.py
 │   ├── crud.py             # Funzioni di interazione con il DB
 │   ├── database.py         # Configurazione e sessione del DB
 │   ├── main.py             # Entrypoint dell'applicazione FastAPI
 │   └── models.py           # Modelli SQLAlchemy e Pydantic
+├── .env.example            # Template delle variabili d'ambiente
 ├── .gitignore
 ├── .vscode/
 │   └── launch.json
+├── AUTHENTICATION.md       # Guida alla configurazione dell'autenticazione
 ├── docker-compose.yaml
 ├── Dockerfile
+├── README.md
 └── requirements.txt        # Dipendenze Python
 ```

@@ -12,10 +12,58 @@ appDeployment:
       requests:
         cpu: 200m
         memory: 256Mi
+    # Configurazione ambiente applicazione
+    env:
+      APP_ENV: "prod"
+      # Database URL viene costruito automaticamente dal template
+      # DATABASE_URL: viene impostato automaticamente nel deployment
   waitForMariadb:
     image:
       repository: busybox
       tag: 1.36.1
+
+# Configurazione autenticazione OIDC
+auth:
+  # Abilita/disabilita l'autenticazione OIDC
+  # Esempio per produzione: enabled: true
+  enabled: false
+  
+  # Configurazione del provider OIDC (es: Authentik)
+  oidc:
+    # URL dell'issuer di Authentik 
+    # Esempio: issuer: "https://auth.example.com/application/o/hr-skill-matrix/"
+    issuer: ""
+    
+    # Client ID dell'applicazione configurata nel provider OIDC
+    # Esempio: clientId: "hr-skill-matrix-prod"
+    clientId: ""
+    
+    # Client Secret (sarà memorizzato in un Secret Kubernetes)
+    # Esempio: clientSecret: "your-super-secret-production-key"
+    clientSecret: ""
+    
+    # URL di redirect dopo l'autenticazione
+    # Deve corrispondere al dominio configurato nell'ingress
+    # Esempio: redirectUri: "https://skill-matrix.example.com/auth/callback"
+    redirectUri: ""
+    
+    # Configurazione JWT
+    jwt:
+      # Algoritmo di firma JWT (normalmente RS256 per OIDC)
+      algorithm: "RS256"
+      # L'audience di default sarà il clientId se non specificato
+      # Esempio: audience: "hr-skill-matrix-prod"
+      audience: ""
+
+# Configurazione CORS
+cors:
+  # Lista degli origins permessi per CORS
+  # Se vuoto, permetterà tutti gli origins (*)
+  # Esempio per produzione:
+  # origins:
+  #   - "https://skill-matrix.example.com"
+  #   - "https://admin.example.com"
+  origins: []
 
 appService:
   ports:
@@ -27,16 +75,23 @@ appService:
 
 ingress:
   enabled: true
-  className: "nginx"  # oppure "traefik" o altri se usi ingress controller diversi
+  # Classe dell'ingress controller (nginx, traefik, etc.)
+  className: "nginx"
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # solo se usi cert-manager
+    # Decommentare per abilitare TLS automatico con cert-manager
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
   hosts:
-    - host: skill-matrix.local  # cambia in base al dominio reale
+    # Esempio per produzione: host: skill-matrix.example.com
+    - host: skill-matrix.local
       paths:
         - path: /
           pathType: Prefix
   tls:
+    # Esempio per produzione con TLS:
+    # - hosts:
+    #     - skill-matrix.example.com
+    #   secretName: skill-matrix-example-tls
     - hosts:
         - skill-matrix.local
       secretName: skill-matrix-tls
@@ -45,6 +100,10 @@ kubernetesClusterDomain: cluster.local
 
 mariadb:
   auth:
+    # IMPORTANTE: Cambiare queste password in produzione!
+    # Esempio password sicure:
+    # rootPassword: "SuperSecureRootPassword123!"
+    # password: "SecureAppPassword456!"
     rootPassword: changeme-root
     username: example_user
     password: example_password
@@ -53,5 +112,7 @@ mariadb:
   primary:
     persistence:
       enabled: true
+      # Esempio per produzione: size: 50Gi
       size: 8Gi
-      # storageClass: "default"  # <-- scommenta se vuoi specificare una StorageClass
+      # Decommentare per specificare una StorageClass specifica
+      # storageClass: "ssd"

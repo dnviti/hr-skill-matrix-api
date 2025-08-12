@@ -19,17 +19,74 @@ spec:
     spec:
       containers:
       - env:
+        # Configurazione database
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
               name: {{ include "hr-skill-matrix.fullname" . }}-db-credentials
               key: DATABASE_URL
+        
+        # Configurazione ambiente applicazione
+        - name: APP_ENV
+          value: {{ .Values.appDeployment.skillMatrixApp.env.APP_ENV | quote }}
+        
+        # Configurazione autenticazione OIDC
+        - name: OIDC_ENABLED
+          value: {{ .Values.auth.enabled | quote }}
+        {{- if .Values.auth.enabled }}
+        - name: OIDC_ISSUER
+          value: {{ .Values.auth.oidc.issuer | quote }}
+        - name: OIDC_CLIENT_ID
+          value: {{ .Values.auth.oidc.clientId | quote }}
+        - name: OIDC_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "hr-skill-matrix.fullname" . }}-auth-credentials
+              key: OIDC_CLIENT_SECRET
+        - name: OIDC_REDIRECT_URI
+          value: {{ .Values.auth.oidc.redirectUri | quote }}
+        - name: JWT_ALGORITHM
+          value: {{ .Values.auth.oidc.jwt.algorithm | quote }}
+        {{- if .Values.auth.oidc.jwt.audience }}
+        - name: JWT_AUDIENCE
+          value: {{ .Values.auth.oidc.jwt.audience | quote }}
+        {{- else }}
+        - name: JWT_AUDIENCE
+          value: {{ .Values.auth.oidc.clientId | quote }}
+        {{- end }}
+        {{- end }}
+        
+        # Configurazione CORS
+        {{- if .Values.cors.origins }}
+        - name: CORS_ORIGINS
+          value: {{ join "," .Values.cors.origins | quote }}
+        {{- end }}
         image: {{ .Values.appDeployment.skillMatrixApp.image.repository }}:{{ .Values.appDeployment.skillMatrixApp.image.tag
           | default .Chart.AppVersion }}
         imagePullPolicy: {{ .Values.appDeployment.skillMatrixApp.imagePullPolicy }}
         name: skill-matrix-app
         ports:
         - containerPort: 8000
+        
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /api/health/ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
         resources: {{- toYaml .Values.appDeployment.skillMatrixApp.resources | nindent
           10 }}
       initContainers:
